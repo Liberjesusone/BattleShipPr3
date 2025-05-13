@@ -1,0 +1,35 @@
+## Ignorar la carpeta de configuraci�n de Visual Studio
+.vs/
+.vscode/
+build
+#
+## Ignorar archivos de compilaci�n
+#Libraries/Obj/
+#Test/Bin/
+#
+## Ignorar archivos temporales de CMake
+#CMakeCache.txt
+#CMakeFiles/
+#cmake_install.cmake
+#
+## Ignorar ejecutables
+*.exe
+*.dll
+*.out
+*.a
+*.lib
+*.so
+*.o
+#
+## Ignorar archivos de depuraci�n
+*.dSYM/
+*.pdb
+#
+## Ignorar logs y archivos de Visual Studio innecesarios
+*.VC.db
+*.ipch
+*.user
+*.suo
+*.ncb
+*.cache
+*.log

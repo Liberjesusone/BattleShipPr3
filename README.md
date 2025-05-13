@@ -1,2 +1,2 @@
-# BattleShipPr3
-Juego de mesa Battle Ship interactivo con un bot logico que juega en nuestra contra
+# BattleShipPR3
+Proyecto de Pr 3, juego de mesa battle ship, con un bot que controla los movimientos del adversario

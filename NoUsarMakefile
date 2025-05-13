@@ -1,0 +1,35 @@
+#CXX         = g++ -std=c++17
+#WARN        = -Wall -m64 -fdiagnostics-color=always -Wextra -Wcast-align -Wno-sign-compare -Wno-write-strings -Wno-parentheses -Wfloat-equal -pedantic
+#
+## Libs
+#LIB         = ./Libraries
+#INCLUDES    = $(wildcard $(LIB)/Include/*.hpp)
+#SOURCES     = $(wildcard $(LIB)/Source/*.cpp)
+#OBJECTS     = $(SOURCES:$(LIB)/Source/%.cpp=$(LIB)/Obj/%.o)
+#
+## Test
+#TESTDIR     = ./Test
+#TEST        = $(wildcard $(TESTDIR)/Source/*.cpp)
+#MKTEST      = $(TEST:$(TESTDIR)/Source/%.cpp=$(TESTDIR)/Bin/%)
+#
+#INCLUDEPATH = -I$(LIB)/Include
+#
+#FLAGS       = -Ofast $(WARN)
+#LIBLINK     =  $(OBJECTS)
+#
+#all: test
+#
+#$(LIB)/Obj/%.o : $(LIB)/Source/%.cpp
+#	$(CXX) $(FLAGS) $(INCLUDEPATH) -c $< -o $@
+#
+#$(TESTDIR)/Bin/%: $(TESTDIR)/Source/%.cpp $(OBJECTS)
+#	$(CXX) $(FLAGS) $(INCLUDEPATH) $< -o $@ $(LIBLINK)
+#
+#test: $(TEST) $(INCLUDES) $(SOURCES) $(MKTEST)
+#
+#.PHONY:
+#clean:
+#	$(RM) $(MKTEST)
+
+
+#no usar este makefile, compilar con cmake

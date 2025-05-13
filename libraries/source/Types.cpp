@@ -1,0 +1,667 @@
+#include "Types.hpp"
+
+using namespace Tree;
+using namespace Party;
+using namespace Play;
+using namespace Objects;
+using namespace BotLogic;
+
+
+std::string num_to_str(int numero)
+{
+	if (numero < 10) 
+		return "0" + std::to_string(numero); // Agrega un cero a la izquierda si el número tiene una cifra
+	else
+		return std::to_string(numero); // Devuelve el número como string si ya tiene dos cifras
+}
+
+
+namespace Tree
+{
+	int get_random_uniform(int n)
+	{
+		// Crear un generador de n�meros aleatorios
+		std::random_device rd;                 // Semilla aleatoria del hardware
+		std::mt19937 gen(rd());                // Motor de n�meros aleatorios (Mersenne Twister)
+
+		// Crear una distribuci�n uniforme en el rango [0, n]
+		std::uniform_int_distribution<> dis(0, n);
+		return dis(gen);
+	}
+	
+	int capacity(int height)
+	{
+		int cap = 0;
+		for (int i = height - 1; i >= 0; --i)
+		{
+			cap += std::pow(2, i);
+		}
+		return cap;
+	}	
+}
+
+
+namespace Party
+{
+	// Clase Map_cell
+
+	Map_cell::Map_cell() noexcept
+	{
+		// Empty
+	}
+
+	Map_cell::Map_cell(size_t x, size_t y) noexcept : location(x, y) 
+	{
+		// Empty
+	}
+
+	Coordinates Map_cell::get_location() const noexcept
+	{	
+		return location;
+	}
+
+	char Map_cell::get_type() const noexcept
+	{
+		return 'M';
+	}
+
+	void Map_cell::set_location(size_t x, size_t y) noexcept
+	{
+		this->location = std::make_pair(x, y);
+	}
+
+	char Map_cell::water_type() 
+	{
+		return 'W';
+	}
+	char Map_cell::boat_type()  
+	{
+		return 'B';
+	}
+	char Map_cell::failed_type() 
+	{
+		return 'F';
+	}
+	char Map_cell::destroyed_type() 
+	{
+		return 'D';
+	}
+	char Map_cell::main_type()  
+	{
+		return 'M';
+	}
+
+
+
+	// Clase Water_cell
+
+	Water_cell::Water_cell() noexcept : Map_cell() 
+	{
+		// Empty
+	}
+
+	Water_cell::Water_cell(size_t x, size_t y) noexcept : Map_cell(x, y) 
+	{
+		// Empty
+	}
+
+	char Water_cell::get_type() const noexcept
+	{
+		return 'W';
+	}
+
+	
+	
+	// Clase Boat_cell
+
+	Boat_cell::Boat_cell() noexcept : Map_cell() 
+	{
+		// Empty
+	}
+
+	Boat_cell::Boat_cell(size_t x, size_t y) noexcept : Map_cell(x, y) 
+	{
+		// Empty
+	}
+
+	char Boat_cell::get_type() const noexcept
+	{
+		return 'B';
+	}
+
+	char Boat_cell::get_position() const noexcept 
+	{
+		return position;
+	}
+
+	bool Boat_cell::is_tail() const noexcept
+	{
+		if (position != 'V' && position != 'B')
+		{
+			return true;
+		}
+		return false;
+	}
+
+	
+
+	// Clase Failed_Cell
+
+	Failed_cell::Failed_cell() noexcept : Map_cell() 
+	{
+		// Empty	
+	}
+
+	Failed_cell::Failed_cell(size_t x, size_t y) noexcept : Map_cell(x, y) 
+	{
+		// Empty
+	}	
+
+	char Failed_cell::get_type() const noexcept
+	{
+		return 'F';
+	}
+
+	
+	
+	// Clase Destroyed_cell
+
+	Destroyed_cell::Destroyed_cell() noexcept : Map_cell() 
+	{
+		// Empty
+	}
+
+	Destroyed_cell::Destroyed_cell(size_t x, size_t y) noexcept : Map_cell(x, y) 
+	{
+		// Empty
+	}
+
+	char Destroyed_cell::get_type() const noexcept
+	{
+		return 'D';
+	}
+	
+	
+	
+	// Clase Map
+
+	Map::Map() noexcept
+	{
+		// Empty
+	}
+
+	Map::Map(size_t cols, size_t rows) noexcept : rows(rows), columns(cols), matrix(cols, std::vector<Map_cell_ptr>(rows)) 
+	{
+		for (size_t x = 0; x < cols; ++x) 
+		{
+			for (size_t y = 0; y < rows; ++y) 
+			{
+				matrix[x][y] = std::make_shared<Water_cell>(x, y); // Inicializar con Water_cell todas las casillas
+			}
+		}
+	}
+
+	bool Map::is_water(Map_cell& cell)
+	{
+		return dynamic_cast<Water_cell*>(&cell) != nullptr;
+	}
+
+	bool Map::is_water(size_t col, size_t row)
+	{
+		Map_cell_ptr cell = get_ptr_cell(col, row);
+		return std::dynamic_pointer_cast<Water_cell>(cell) != nullptr;
+	}
+
+	bool Map::is_boat(size_t col, size_t row)
+	{
+		Map_cell_ptr cell = get_ptr_cell(col, row);
+		return std::dynamic_pointer_cast<Boat_cell>(cell) != nullptr;
+	}
+
+	bool Map::is_failed(size_t col, size_t row)
+	{
+		Map_cell_ptr cell = get_ptr_cell(col, row);
+		return std::dynamic_pointer_cast<Failed_cell>(cell) != nullptr;
+	}
+
+	bool Map::is_destroyed(size_t col, size_t row)
+	{
+		Map_cell_ptr cell = get_ptr_cell(col, row);
+		return std::dynamic_pointer_cast<Destroyed_cell>(cell) != nullptr;
+	}
+
+	size_t Map::get_columns() const noexcept
+	{
+		return this->columns;
+	}
+
+	size_t Map::get_rows() const noexcept
+	{
+		return this->rows;
+	}
+
+	Map_cell& Map::get_cell(size_t col, size_t row) const
+	{
+		if (row >= this->rows || col >= this->columns)	// Si no esta dentro del rango
+		{
+			throw std::runtime_error{"Index out of range in the map"};
+		}
+
+		return *(matrix[col][row]);	
+	}
+
+	Map_cell_ptr Map::get_ptr_cell(size_t col, size_t row) const
+	{
+		//std::cout << "row = " << row << "     col = " << col << "\n";
+		//std::cout << "rows = " << rows << "     colums = " << columns << "\n";
+		if (row >= this->rows || col >= this->columns)	// Si no esta dentro del rango
+		{
+			throw std::runtime_error{"Index out of range in the map"};
+		}
+
+		return matrix[col][row];	
+	}
+
+	Map_cell_ptr Map::get_right_cell(Map_cell_ptr cell) const
+	{
+		auto location = cell->get_location();
+
+		if (location.first >= columns -1) // Si ya se encuentra en el limite
+		{
+			return nullptr;
+		}
+		
+		return get_ptr_cell(++location.first, location.second);
+	}
+
+	Map_cell_ptr Map::get_left_cell(Map_cell_ptr cell) const
+	{
+		auto location = cell->get_location();
+
+		if (location.first == 0) // Si ya se encuentra en el limite
+		{
+			return nullptr;
+		}
+		
+		return get_ptr_cell(--location.first, location.second);
+	}
+
+	Map_cell_ptr Map::get_up_cell(Map_cell_ptr cell) const
+	{
+		auto location = cell->get_location();
+
+		if (location.second == 0) // Si ya se encuentra en el limite
+		{
+			return nullptr;
+		}
+		
+		return get_ptr_cell(location.first, --location.second);
+	}
+
+	Map_cell_ptr Map::get_down_cell(Map_cell_ptr cell) const
+	{
+		auto location = cell->get_location();
+
+		if (location.second >= rows - 1) // Si ya se encuentra en el limite
+		{
+			return nullptr;
+		}
+		
+		return get_ptr_cell(location.first, ++location.second);
+	}
+
+	void Map::set_water(Map_cell_ptr cell) const noexcept
+	{
+		auto location = cell->get_location();
+		cell = std::make_shared<Water_cell>(location.first, location.second);
+	}
+
+	void Map::set_destroy(Map_cell_ptr cell) const noexcept
+	{
+		auto location = cell->get_location();
+		cell = std::make_shared<Destroyed_cell>(location.first, location.second);
+	}
+
+	void Map::set_fail(Map_cell_ptr cell) const noexcept
+	{
+		auto location = cell->get_location();
+		cell = std::make_shared<Failed_cell>(location.first, location.second);
+	}
+
+	void Map::set_boat(Map_cell_ptr cell) const noexcept
+	{	
+		auto location = cell->get_location();
+		cell = std::make_shared<Boat_cell>(location.first, location.second);
+		//OJO asinganr la posicion
+	}
+}
+
+
+namespace Objects
+{
+	// Clase SingleShot
+
+	SingleShot::SingleShot() noexcept
+	{
+		// Empty
+	}
+
+	void SingleShot::operator() (Player& player, Map_cell_ptr cell) 
+	{
+		auto mapa = player.get_map();
+		auto cell_type = cell->get_type();
+
+		if (cell_type == Map_cell::boat_type())
+		{
+			mapa.set_destroy(cell);
+		}
+		else if (cell_type == Map_cell::water_type())
+		{
+			mapa.set_fail(cell);	
+		}
+	}
+
+
+	
+	// Clase ChargedShot
+
+	ChargedShot::ChargedShot() noexcept
+	{
+		// Empty	
+	}
+	
+	void ChargedShot::operator() (Player& player, Map_cell_ptr cell)
+	{	
+		Map mapa = player.get_radar();
+		auto cell_type = cell->get_type();
+		
+		if (cell_type == Map_cell::boat_type())		  // Si la celda es un bote
+		{										      // Obtenemos el bote de donde proviene la celda
+			Boat_ptr enemy_boat = player.get_build().get_fleet().get_boat_of_cell(cell);	
+			auto boat_cells_coord = enemy_boat->get_boat_coordinates();  // Obtenemos la lista de coordenadas de las demas celdas del bote
+			for (auto coordinates : boat_cells_coord)					 // Destruimos cada una de ellas
+			{
+				auto cell = mapa.get_ptr_cell(coordinates.first, coordinates.second);
+				mapa.set_destroy(cell);
+			}
+		}
+		else if (cell_type == Map_cell::water_type()) // Si la celda es agua 
+		{
+			mapa.set_fail(cell);	
+		}											  // Si no es ninguna de las anteriores no pasa nada
+	}
+
+	
+	
+	// Clase HealCell
+	
+	HealCell::HealCell() noexcept
+	{
+		// Empty
+	}
+
+	void HealCell::operator() (Player& player, Map_cell_ptr cell)
+	{
+		auto mapa = player.get_map();
+		mapa.set_boat(cell);
+	}
+
+	
+	
+	// Clase Item
+
+	Item::Item(size_t stock, std::string name) noexcept : stock(stock), name(name) 
+	{
+		// Empty
+	}
+	
+	std::string Item::get_name() const noexcept 
+	{
+		return this->name;
+	}
+
+	size_t Item::get_stock() const noexcept
+	{
+		return this->stock;
+	}
+
+	char Item::get_type() const noexcept
+	{
+		return 'I';
+	}
+
+	void Item::use_on(Player& player, size_t col, size_t row)
+	{
+		// Pude usarce el item casual
+		// OJO por desarrollar
+	}
+
+	char Item::item_type()
+	{
+		return 'I';
+	}
+	char Item::comodin_type()
+	{
+		return 'C';
+	}
+	char Item::rocket_type()
+	{
+		return 'R';
+	}
+
+
+
+	// Clase Rocket
+
+	template<typename DamageType>
+	Rocket<DamageType>::Rocket() noexcept : Item() 
+	{
+		// Empty
+	}
+
+	template<typename DamageType>
+	Rocket<DamageType>::Rocket(size_t stock, std::string name) noexcept : Item(stock, name) 
+	{
+		// Empty
+	}
+
+	template<typename DamageType>
+	char Rocket<DamageType>::get_type() const noexcept
+	{
+		return 'R';
+	}
+
+
+	// Clase Comodin
+	template<typename EffectType>
+	Comodin<EffectType>::Comodin() noexcept : Item() 
+	{
+		// Empty
+	}
+
+	template<typename EffectType>
+	Comodin<EffectType>::Comodin(size_t stock, std::string name) noexcept : Item(stock, name) 
+	{
+		// Empty
+	}
+
+	template<typename EffectType>
+	char Comodin<EffectType>::get_type() const noexcept
+	{
+		return 'C';
+	}
+
+
+
+	// Clase
+}
+
+
+namespace Play
+{
+	// Struct PairHash
+
+	std::size_t PairHash::operator() (const std::pair<size_t, size_t>& p) const noexcept 
+	{
+		return std::hash<size_t>()(p.first) ^ (std::hash<size_t>()(p.second) << 1);  // Generacion de codigo hash en base a los dos valores
+	}
+
+
+
+	// Clase Boat
+
+	Boat::Boat() noexcept
+	{
+		// Empty
+	}
+
+	bool Boat::contains(Map_cell_ptr cell) const noexcept
+	{
+		return this->boat_coordinates.contains(cell->get_location());
+	}
+
+	Boat::Coord_list& Boat::get_boat_coordinates() noexcept
+	{
+		return this->boat_coordinates;
+	}
+
+	size_t Boat::get_size() const noexcept
+	{
+		this->boat_coordinates.size();
+	}
+
+
+
+	// Clase Fleet
+
+	Fleet::Fleet() noexcept
+	{
+		// Empty
+	}
+
+	std::vector<Boat_ptr>& Fleet::get_boats() noexcept
+	{
+		return this->boats;
+	}
+
+	Boat_ptr Fleet::get_boat_of_cell(Map_cell_ptr cell) const noexcept
+	{	
+		for (auto bote : boats)
+		{
+			if (bote->contains(cell))
+			{
+				return bote;
+			}
+		}
+		return nullptr;
+	}
+
+
+
+	// Clase Arsenal
+
+	Arsenal::Arsenal() noexcept
+	{
+		// Empty
+	}
+
+	std::vector<Item_ptr>& Arsenal::get_items() noexcept
+	{
+		return this->items;
+	}
+
+
+
+	// Clase Build
+
+	Build::Build() noexcept
+	{
+		// Empty
+	}
+
+	Fleet& Build::get_fleet() noexcept
+	{
+		return this->flota;
+	}
+
+	Arsenal& Build::get_arsenal() noexcept
+	{
+		return this->arsenal;
+	}
+	
+	std::string Build::get_name() const noexcept
+	{
+		return this->name;
+	}
+
+
+
+	// Clase Player
+
+	Player::Player() noexcept
+	{
+		// Empty
+	}
+
+	Map& Player::get_radar() noexcept
+	{
+		return this->radar;
+	}
+	
+	Map& Player::get_map() noexcept
+	{
+		return this->mapa;
+	}
+
+	Build& Player::get_build() noexcept
+	{
+		return this->build;
+	}
+
+
+
+	// Clase 
+
+
+}
+
+
+namespace BotLogic
+{
+	// Clase Bot
+
+	Bot::Bot() noexcept : Player() 
+	{
+		// OJO por desarrollar
+	}
+
+	Movement Bot::get_next_move(Player enemy)
+	{
+		// OJO por desarrollar
+	}
+
+	Movement Bot::get_random_move()
+	{                      
+		auto items = this->get_build().get_arsenal().get_items();			 
+		Item_ptr item = items[get_random_uniform(items.size()-1)];           // Obtenemos un item aleatorio dentro del arsenal 
+
+		std::shared_ptr<Map> selected_map;
+		if (item->get_type() == Item::comodin_type())															
+		{
+			selected_map = std::make_shared<Map>(this->get_map());				// si es comodin lo aplicamos en el mapa nuestro 
+		}
+		else 
+		{
+			selected_map = std::make_shared<Map>(this->get_radar());				// si es rocket lo aplicamos en el mapa enemigo
+		}
+		
+		Coordinates location{selected_map->get_columns() - 1, selected_map->get_rows() - 1};   // Obtenemos la cantidad de filas y columnas
+																	          // Obtenemos una celda aleatoria dentro del rango del radar
+		Coordinates selected_cell{get_random_uniform(location.first), get_random_uniform(location.second)}; 
+
+		return Movement(selected_cell, item);		
+	}
+
+
+
+}
