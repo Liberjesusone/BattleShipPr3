@@ -1,5 +1,8 @@
 #pragma once
 #include <iostream>
+
+#include <SFML/Graphics.hpp>		// Bibliotecas de SFML
+
 #include <fstream>
 #include <memory>
 #include <string>
@@ -8,6 +11,7 @@
 #include <queue>
 #include <vector>
 #include <utility>
+#include <unordered_map>
 #include <unordered_set>
 #include <functional>
 
@@ -543,9 +547,7 @@ namespace Party
 
 
 	/**
-	 * @brief Representa el mapa de una partida, 
-	 * 
-	 * @note Tiene un 
+	 * @brief Representa el mapa de una partida, con una matrix de Map_cells y diferentes metodos para operar con ellas
 	 */
 	class Map
 	{
@@ -961,7 +963,7 @@ namespace Play
 			 */
 			bool contains(Map_cell_ptr cell) const noexcept;
 
-			// Getters
+			// Getters 
 
 			Coord_list& get_boat_coordinates() noexcept;
 
@@ -1050,6 +1052,9 @@ namespace Play
 		public:
 			// Constructor por defecto
 			Player() noexcept;
+
+			// Constructor parametrico
+			Player(Map& mapa) noexcept;
 
 			// Getters
 

@@ -603,6 +603,11 @@ namespace Play
 		// Empty
 	}
 
+	Player::Player(Map& mapa) noexcept : mapa(mapa)
+	{
+		// Emtpy
+	}
+
 	Map& Player::get_radar() noexcept
 	{
 		return this->radar;
