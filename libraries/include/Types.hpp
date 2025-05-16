@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include <SFML/Graphics.hpp>		// Bibliotecas de SFML
+#include <SFML/Audio.hpp>
 
 #include <fstream>
 #include <memory>
@@ -1077,7 +1078,7 @@ namespace Play
 			Player() noexcept;
 
 			// Constructor parametrico
-			Player(std::string name, Map& mapa) noexcept;
+			Player(std::string name, Map& mapa, Map& radar) noexcept;
 
 			// Getters
 
@@ -1103,7 +1104,7 @@ namespace BotLogic
 
 		private:
 			// Arbol que representa las posiciones de los posibles barcos segun el disparo acertado
-			Tree::Node<int> arbol_de_posiciones;
+			static Node<int> arbol_de_posiciones;
 
 		public:
 			// Constructor por defecto
@@ -1123,5 +1124,29 @@ namespace BotLogic
 			 */
 			Movement get_random_move();
 
+			/**
+			 * @brief Le asigna al mapa mandado los botes en las posiciones segun la logica interna del bot
+			 * 
+			 * @param mapa al que se le agregaran los botes
+			 */
+			static void create_map(Map& mapa)
+			{
+				mapa.set_boat(mapa.get_ptr_cell(0,0));
+				mapa.set_boat(mapa.get_ptr_cell(0,1));
+				mapa.set_boat(mapa.get_ptr_cell(0,2));
+				mapa.set_boat(mapa.get_ptr_cell(0,3));
+				
+				mapa.set_boat(mapa.get_ptr_cell(1,0));
+				mapa.set_boat(mapa.get_ptr_cell(1,1));
+				mapa.set_boat(mapa.get_ptr_cell(1,2));
+				
+				mapa.set_boat(mapa.get_ptr_cell(2,0));
+				mapa.set_boat(mapa.get_ptr_cell(2,0));
+				
+				mapa.set_boat(mapa.get_ptr_cell(3,0));
+				mapa.set_boat(mapa.get_ptr_cell(3,1));
+
+				mapa.set_boat(mapa.get_ptr_cell(4,0));
+			}
 	};
 }

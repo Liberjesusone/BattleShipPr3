@@ -15,12 +15,13 @@ namespace Painter
     std::string Resources::boat_png = "boteNaval-S.png";
     std::string Resources::missile_png = "missile.png";
     std::string Resources::heart_png = "heart.png";
-    std::string Resources::water_png = "PixelWater.jpg";
-    std::string Resources::radar_png = "PixelRadar.jpg";
+    std::string Resources::water_player_png = "water_player.png";
+    std::string Resources::radar_png = "water_enemy.png";
     std::string Resources::wood_table_png = "WoodTable.jpg";
     std::string Resources::failed_png = "fallo.jpg";
     std::string Resources::menu_png = "menu.jpg";
     std::string Resources::boat_body_png = "BoteNavalBody.png";
+    std::string Resources::shield_png = "shield.png";
 
     std::string Resources::titulos_ttf = "tittle_font.ttf";
 
@@ -66,9 +67,9 @@ namespace Painter
     { 
         return Resources::heart_png; 
     }
-    std::string Resources::water_image() 
+    std::string Resources::water_player_image() 
     { 
-        return Resources::water_png; 
+        return Resources::water_player_png; 
     }
     std::string Resources::radar_image() 
     { 
@@ -89,6 +90,10 @@ namespace Painter
     std::string Resources::boat_body_image()
     {
         return Resources::boat_body_png;
+    }
+    std::string Resources::shield_image()
+    {
+        return Resources::shield_png;
     }
 
     std::string Resources::titulos_font()
@@ -116,8 +121,6 @@ namespace Painter
             sf::Texture& texture = Resources::get_texture(Resources::boat_body_image());
 
             sprites_cells[vec_indx].setTexture(texture);
-            //sprites_cells[vec_indx].setScale(static_cast<float>(scale.x) / texture.getSize().x,
-            //                                static_cast<float>(scale.y) / texture.getSize().y);
             sprites_cells[vec_indx].setPosition(position);
             sprites_cells[vec_indx].setScale(complete_scale);
 

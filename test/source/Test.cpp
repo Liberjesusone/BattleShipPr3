@@ -1,17 +1,14 @@
 #include "Visual.hpp"
 
 void load_textures(sf::Texture& water_texture, sf::Texture& ship_texture, sf::Texture& miss_texture, sf::Texture& destroyed_texture, 
-    sf::Texture& radar_texture, sf::Texture& layout)
+    sf::Texture& radar_texture, sf::Texture& wood_table_texture)
 {
-    if (!water_texture.loadFromFile("resources/textures/water_player.png") ||
-        !ship_texture.loadFromFile("resources/textures/ship.png") ||
-        !miss_texture.loadFromFile("resources/textures/fallo.jpg") ||
-        !destroyed_texture.loadFromFile("resources/textures/destruido.jpg") ||
-        !radar_texture.loadFromFile("resources/textures/water_enemy.png") ||
-        !layout.loadFromFile("resources/textures/layout.jpg"))
-    {
-        throw std::runtime_error("No se pudieron cargar las texturas");
-    }
+    water_texture = Resources::get_texture(Resources::water_player_image());
+    ship_texture = Resources::get_texture(Resources::boat_image());
+    miss_texture = Resources::get_texture(Resources::failed_image());
+    destroyed_texture = Resources::get_texture(Resources::failed_image());
+    radar_texture = Resources::get_texture(Resources::radar_image());
+    wood_table_texture = Resources::get_texture(Resources::wood_table_image());
 }
 
 /**
@@ -56,6 +53,18 @@ sf::Texture create_cell(double CELL_SIZE_X, double CELL_SIZE_Y)
     return cell_texture;
 }
 
+/**
+ * @brief Crea una textura personalizada con un botón dentro de un círculo.
+ *
+ * Esta función genera una textura que contiene un círculo amarillo con borde negro
+ * y un botón centrado en su interior. Se utiliza `sf::RenderTexture` para construir
+ * la textura de manera dinámica y devolverla como un `sf::Texture`.
+ *
+ * @param CELL_SIZE_X Ancho de la textura a generar.
+ * @param CELL_SIZE_Y Alto de la textura a generar.
+ * @param texture Textura del botón a colocar en el centro del círculo.
+ * @return sf::Texture Textura generada con el botón dentro del círculo.
+ */
 sf::Texture create_special_button(double CELL_SIZE_X, double CELL_SIZE_Y, sf::Texture texture)
 {
     // Crear textura con espacio totalmente transparente
@@ -93,37 +102,36 @@ sf::Texture create_special_button(double CELL_SIZE_X, double CELL_SIZE_Y, sf::Te
 }
 
 
-void play_window(sf::RenderWindow& window, sf::Font& font)
+void play_window(sf::RenderWindow& window, Player& player) 
 {
+    sf::Font font = Resources::get_font(Resources::titulos_font());
+
     //MAP DIVISIONS
     sf::Vector2u windowSize = window.getSize();
-    const int INFO_WIDTH = windowSize.x / 3;         // 1/3 para la información
-    const int MAP_WIDTH = windowSize.x - INFO_WIDTH; // 2/3 para mapas
-    const int MAP_HEIGHT = windowSize.y;
-    const int RADAR_HEIGHT = MAP_HEIGHT / 2;         // Altura de ambos mapas
+    const size_t INFO_WIDTH = windowSize.x / 3;         // 1/3 para la información
+    const size_t MAP_WIDTH = windowSize.x - INFO_WIDTH; // 2/3 para mapas
+    const size_t MAP_HEIGHT = windowSize.y;
+    const size_t RADAR_HEIGHT = MAP_HEIGHT / 2;         // Altura de ambos mapas
 
     //PANELS
     sf::RectangleShape info_panel(sf::Vector2f(INFO_WIDTH, MAP_HEIGHT));     // panel de informacion a la izq
     sf::RectangleShape radar_panel(sf::Vector2f(MAP_WIDTH, RADAR_HEIGHT));  // panel del radar arriba a la derecha
     sf::RectangleShape player_panel(sf::Vector2f(MAP_WIDTH, RADAR_HEIGHT)); // panel del mapa propio abajo a la derecha
-
+    
     //CELLS
-    Party::Map player_map(10, 10);
-    Party::Map radar_map(10, 10);
-    const int CELL_SIZE_X = MAP_WIDTH / radar_map.get_columns();  // Ancho y alto de las celdas
-    const int CELL_SIZE_Y = RADAR_HEIGHT / radar_map.get_rows();
+    Map& player_map = player.get_map();
+    Map& radar_map = player.get_radar();
+
+    const size_t CELL_SIZE_X = MAP_WIDTH / player_map.get_columns();  // Ancho y alto de las celdas
+    const size_t CELL_SIZE_Y = RADAR_HEIGHT / player_map.get_rows();
     //sf::Texture cell_texture = create_cell(CELL_SIZE_X, CELL_SIZE_Y);
 
     //TEXTURES
     sf::Text exit_button; 
-    sf::Texture water_texture, ship_texture, miss_texture, destroyed_texture, radar_texture, layout;
+    sf::Texture water_player_texture, ship_texture, miss_texture, destroyed_texture, water_enemy_texture, wood_table_texture;
     std::vector<sf::Sprite> enemy_cells, player_cells;
-    load_textures(water_texture, ship_texture, miss_texture, destroyed_texture, radar_texture, layout);
-    sf::Texture water_enemy;
-    sf::Texture water_player;
-    water_player.loadFromFile("resources/textures/water_player.png");
-    water_enemy.loadFromFile("resources/textures/water_enemy.png");
-    
+    load_textures(water_player_texture, ship_texture, miss_texture, destroyed_texture, water_enemy_texture, wood_table_texture);
+
     //SHIPS
     std::vector<sf::Sprite> ships;
 
@@ -145,29 +153,28 @@ void play_window(sf::RenderWindow& window, sf::Font& font)
     exit_button.setFillColor(sf::Color::White);
 
     //SHOT BUTTON
-    sf::Texture button_texture; 
-    button_texture.loadFromFile("resources/textures/missile.png");
+    sf::Texture button_texture = Resources::get_texture(Resources::missile_image());
     sf::Texture misil_texture = create_special_button(100, 100, button_texture);
     sf::Sprite shot_button(misil_texture);
     shot_button.setPosition(15, 400);
     shot_button.setColor(sf::Color(255,255,255,128));
 
     //SHIELD BUTTON
-    button_texture.loadFromFile("resources/textures/shield.png");
+    button_texture = Resources::get_texture(Resources::shield_image());
     sf::Texture shield_texture = create_special_button(100, 100, button_texture);
     sf::Sprite shield_button(shield_texture);
     shield_button.setPosition(130, 400);
     shield_button.setColor(sf::Color(255,255,255,128));
 
     //HEAL BUTTON
-    button_texture.loadFromFile("resources/textures/heart.png");
+    button_texture = Resources::get_texture(Resources::heart_image());
     sf::Texture heal_texture = create_special_button(100, 100, button_texture);
     sf::Sprite heal_button(heal_texture);
     heal_button.setPosition(245, 400);
     heal_button.setColor(sf::Color(255,255,255,128));
 
     //PANELS PROPERTIES (POSITION AND TEXTURE)
-    info_panel.setTexture(&layout);
+    info_panel.setTexture(&wood_table_texture);
     info_panel.setPosition(0, 0);
     //radar_panel.setTexture(&radar_texture);
     radar_panel.setFillColor(sf::Color::Black);
@@ -177,23 +184,23 @@ void play_window(sf::RenderWindow& window, sf::Font& font)
     player_panel.setPosition(INFO_WIDTH, RADAR_HEIGHT);
 
     //CELLS
-    for (size_t x = 0; x < radar_map.get_rows(); ++x)             
+    for (size_t x = 0; x < radar_map.get_columns(); ++x)             
     {
-        for (size_t y = 0; y < radar_map.get_columns(); ++y) 
+        for (size_t y = 0; y < radar_map.get_rows(); ++y) 
         {
             // Sprite para el radar (enemigo)
             sf::Sprite enemy_sprite;
-            enemy_sprite.setTexture(water_enemy);
-            enemy_sprite.setScale(static_cast<float>(CELL_SIZE_X) / water_enemy.getSize().x,
-                                static_cast<float>(CELL_SIZE_Y) / water_enemy.getSize().y);
+            enemy_sprite.setTexture(water_enemy_texture);
+            enemy_sprite.setScale(static_cast<float>(CELL_SIZE_X) / water_enemy_texture.getSize().x,
+                                static_cast<float>(CELL_SIZE_Y) / water_enemy_texture.getSize().y);
             enemy_sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, y * CELL_SIZE_Y);
             enemy_cells.push_back(enemy_sprite);
             
             // Sprite para el mapa del jugador
             sf::Sprite player_sprite;
-            player_sprite.setTexture(water_player);
-            player_sprite.setScale(static_cast<float>(CELL_SIZE_X) / water_player.getSize().x,
-                                 static_cast<float>(CELL_SIZE_Y) / water_player.getSize().y);
+            player_sprite.setTexture(water_player_texture);
+            player_sprite.setScale(static_cast<float>(CELL_SIZE_X) / water_player_texture.getSize().x,
+                                 static_cast<float>(CELL_SIZE_Y) / water_player_texture.getSize().y);
             player_sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, RADAR_HEIGHT + y * CELL_SIZE_Y);
             player_cells.push_back(player_sprite);
         }
@@ -363,11 +370,11 @@ int build_window(sf::RenderWindow& window)
     window.clear();
     window.setTitle("Battle Ship - Build");
 
-
     // Construimos los mapas y el jugador
     Map mapa(5, 10);
-    Player player("Jugador", mapa);
-
+    Map radar(5, 10);    
+    Bot::create_map(radar);     //Creacion del mapa del bot
+    Player player("Jugador", mapa, radar);
 
     // Tamaños y divisiones de la pantalla
     sf::Vector2u window_size = window.getSize();
@@ -387,17 +394,17 @@ int build_window(sf::RenderWindow& window)
     const size_t BOTON_SIZE_Y = BOTON_SIZE_X;
 
     // ---- CARGAR TEXTURAS ---- //
-    sf::Texture misil_texture = create_shot_texture(MAP_WIDTH * 0.10, MAP_WIDTH * 0.10);
-    sf::Texture circle_texture = create_circule_texture(CELL_SIZE_X, CELL_SIZE_Y);
-    sf::Texture comodin_texture = Painter::Resources::get_texture(Painter::Resources::heart_image());
-    sf::Texture agua_texture, barco_texture, fallo_texture, destruido_texture, radar_texture, pirate_map;
-    load_textures(agua_texture, barco_texture, fallo_texture, destruido_texture, radar_texture, pirate_map);
+    sf::Texture misil_texture = create_special_button(MAP_WIDTH * 0.10, MAP_WIDTH * 0.10, Resources::get_texture(Resources::missile_image()));
+    sf::Texture circle_texture = create_cell(CELL_SIZE_X, CELL_SIZE_Y);
+    sf::Texture comodin_texture = Resources::get_texture(Resources::heart_image());
+    sf::Texture agua_texture, barco_texture, fallo_texture, destruido_texture, radar_texture, wood_table_texture;
+    load_textures(agua_texture, barco_texture, fallo_texture, destruido_texture, radar_texture, wood_table_texture);
 
 
     // ---- PANELES ---- //
     sf::RectangleShape info_panel(sf::Vector2f(WIN_WIDTH, WIN_HEIGHT));     // panel de informacion a la izq
     info_panel.setPosition(0, 0);
-    info_panel.setTexture(&pirate_map);
+    info_panel.setTexture(&wood_table_texture);
 
     sf::RectangleShape player_panel(sf::Vector2f(MAP_WIDTH, MAP_HEIGHT)); // panel del mapa propio abajo a la derecha
     player_panel.setPosition(INFO_WIDTH, WIN_HEIGHT * 0.1);
@@ -428,7 +435,7 @@ int build_window(sf::RenderWindow& window)
     }
 
     // ---- BOTONES ---- // 
-    sf::Font font = Painter::Resources::get_font(Painter::Resources::titulos_font());
+    sf::Font font = Resources::get_font(Resources::titulos_font());
 
     // Botón de Salida
     sf::Text exit_button("Salir", font, TEXT_SIZE);        //OJO darle a los bones un tamaño escalable
@@ -549,7 +556,7 @@ int build_window(sf::RenderWindow& window)
                                             "Barco destruido";
 
                             Boat bote(4 - boat_indx, Coordinates(x, y));
-                            Painter::Drawer::draw(player_casillas, mapa, bote);    
+                            Drawer::draw(player_casillas, mapa, bote);    
                         }
                         else if (player_casillas[i].getGlobalBounds().contains(mouse_pos)) // si solo la clickeo 
                         {
@@ -575,7 +582,7 @@ int build_window(sf::RenderWindow& window)
                     else if (play_button.getGlobalBounds().contains(mouse_pos)) // Clic en "Terminar Partida"
                     {
                         std::cout << "Jugar. Empezando partida..." << std::endl;
-                        play_window(window);
+                        play_window(window, player);
                     }
                     for (size_t i = 0; i < comodines.size(); ++i)
                     {
@@ -636,8 +643,7 @@ void menu_window()
     //BUTTONS
     std::vector<sf::Text> buttons;  
     std::vector<std::string> name_buttons = {"Jugar", "Salir"};  
-    sf::Font font;
-    font.loadFromFile("resources/fonts/tittle_font.ttf");
+    sf::Font font = Resources::get_font(Resources::titulos_font());
 
     for (size_t i = 0; i < name_buttons.size(); ++i)  
     {
@@ -652,12 +658,11 @@ void menu_window()
 
     //BACKGROUND
     sf::Sprite back_ground_sprite;             
-    sf::Texture backgroundTexture; 
-    backgroundTexture.loadFromFile("resources/textures/menu.jpg");
-    back_ground_sprite.setTexture(backgroundTexture);
+    sf::Texture background_texture = Resources::get_texture(Resources::menu_image());
+    back_ground_sprite.setTexture(background_texture);
 
     //BACKGROUND SCALE
-    sf::Vector2u textureSize = backgroundTexture.getSize();
+    sf::Vector2u textureSize = background_texture.getSize();
     float windowWidth = static_cast<float>(windowSize.x);
     float windowHeight = static_cast<float>(windowSize.y);
     float textureWidth = static_cast<float>(textureSize.x);

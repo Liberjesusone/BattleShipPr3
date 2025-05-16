@@ -38,7 +38,6 @@ namespace Tree
 	}	
 }
 
-
 namespace Party
 {
 	// Clase Map_cell
@@ -341,20 +340,25 @@ namespace Party
 	void Map::set_destroy(Map_cell_ptr cell) noexcept
 	{
 	    auto location = cell->get_location();
+	    matrix[location.first][location.second] = std::make_shared<Destroyed_cell>(location.first, location.second);
+	}
+
+	void Map::set_fail(Map_cell_ptr cell) noexcept
+	{
+	    auto location = cell->get_location();
 	    matrix[location.first][location.second] = std::make_shared<Failed_cell>(location.first, location.second);
 	}
 
-	void Map::set_fail(Map_cell_ptr cell) const noexcept
+	void Map::set_boat(Map_cell_ptr cell) noexcept
 	{
-	    auto location = cell->get_location();
-	    matrix[location.first][location.second] = std::make_shared<Protected_cell>(location.first, location.second);
+		auto location = cell->get_location();
+	    matrix[location.first][location.second] = std::make_shared<Boat_cell>(location.first, location.second);
 	}
 
-
-	void Map::set_destroy(Map_cell_ptr cell) noexcept
+	void Map::set_protected(Map_cell_ptr cell) noexcept
 	{
-	    auto location = cell->get_location();
-	    matrix[location.first][location.second] = std::make_shared<Destroyed_cell>(location.first, location.second);
+		auto location = cell->get_location();
+	    matrix[location.first][location.second] = std::make_shared<Protected_cell>(location.first, location.second);
 	}
 }
 
@@ -509,7 +513,6 @@ namespace Objects
 	}
 }
 
-
 namespace Play
 {
 	// Struct PairHash
@@ -622,7 +625,7 @@ namespace Play
 		// Empty
 	}
 
-	Player::Player(std::string name, Map& mapa) noexcept : name(name), mapa(mapa)
+	Player::Player(std::string name, Map& mapa, Map& radar) noexcept : name(name), mapa(mapa), radar(radar)
 	{
 		// Emtpy
 	}
@@ -642,7 +645,6 @@ namespace Play
 		return this->build;
 	}
 }
-
 
 namespace BotLogic
 {

@@ -3,6 +3,13 @@
 
 // Archivo para desarrollar funcionalidades relacionadas al apartado visual de las estructuras de datos 
 
+namespace Painter
+{
+    class Resources;
+    class Drawer;
+}
+
+using namespace Painter;
 
 /**
  * @brief Agrupa los componentes que manejan el apartado visual de las clases abstractas
@@ -29,12 +36,14 @@ namespace Painter
             static std::string boat_png;
             static std::string missile_png;
             static std::string heart_png;
-            static std::string water_png;
+            static std::string water_player_png;
             static std::string radar_png;
             static std::string wood_table_png;
             static std::string failed_png;
             static std::string menu_png;
             static std::string boat_body_png;
+            static std::string shield_png;
+
             
             // Nombre de las fuentes
             static std::string titulos_ttf;
@@ -70,12 +79,13 @@ namespace Painter
             static std::string boat_image();
             static std::string missile_image();
             static std::string heart_image();
-            static std::string water_image();
+            static std::string water_player_image();
             static std::string radar_image();
             static std::string wood_table_image();
             static std::string failed_image();
             static std::string menu_image();
             static std::string boat_body_image();
+            static std::string shield_image();
 
             static std::string titulos_font();
 
