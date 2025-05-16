@@ -5,11 +5,11 @@
 void load_textures(sf::Texture& water_texture, sf::Texture& ship_texture, sf::Texture& miss_texture, sf::Texture& destroyed_texture, 
     sf::Texture& radar_texture, sf::Texture& layout)
 {
-    if (!water_texture.loadFromFile("resources/textures/water.jpg") ||
+    if (!water_texture.loadFromFile("resources/textures/water_player.png") ||
         !ship_texture.loadFromFile("resources/textures/ship.png") ||
         !miss_texture.loadFromFile("resources/textures/fallo.jpg") ||
         !destroyed_texture.loadFromFile("resources/textures/destruido.jpg") ||
-        !radar_texture.loadFromFile("resources/textures/radar.jpg") ||
+        !radar_texture.loadFromFile("resources/textures/water_enemy.png") ||
         !layout.loadFromFile("resources/textures/layout.jpg"))
     {
         throw std::runtime_error("No se pudieron cargar las texturas");
@@ -29,8 +29,8 @@ sf::Texture create_cell(double CELL_SIZE_X, double CELL_SIZE_Y)
     float borderr_thickness = 5.0f;                                // Grosor del border negro
     sf::RectangleShape border(sf::Vector2f(CELL_SIZE_X - borderr_thickness, CELL_SIZE_Y - borderr_thickness));
     border.setFillColor(sf::Color::Transparent);                  // Para que el interior no se opaque
-    border.setOutlineColor(sf::Color::Black);         // Color del border
-    border.setOutlineThickness(borderr_thickness);                  // Grosor ajustado
+    border.setOutlineColor(sf::Color::Blue);         // Color del border
+    border.setOutlineThickness(borderr_thickness);                 // Grosor ajustado
     border.setPosition(borderr_thickness / 2, borderr_thickness / 2); // Centrar el border dentro del espacio
 
     // Crear el círculo translúcido en el centro
@@ -105,13 +105,17 @@ void play_window(sf::RenderWindow& window, sf::Font& font)
     Party::Map radar_map(10, 10);
     const int CELL_SIZE_X = MAP_WIDTH / radar_map.get_columns();  // Ancho y alto de las celdas
     const int CELL_SIZE_Y = RADAR_HEIGHT / radar_map.get_rows();
-    sf::Texture cell_texture = create_cell(CELL_SIZE_X, CELL_SIZE_Y);
+    //sf::Texture cell_texture = create_cell(CELL_SIZE_X, CELL_SIZE_Y);
 
     //TEXTURES
     sf::Text exit_button; 
     sf::Texture water_texture, ship_texture, miss_texture, destroyed_texture, radar_texture, layout;
     std::vector<sf::Sprite> enemy_cells, player_cells;
     load_textures(water_texture, ship_texture, miss_texture, destroyed_texture, radar_texture, layout);
+    sf::Texture water_enemy;
+    sf::Texture water_player;
+    water_player.loadFromFile("resources/textures/water_player.png");
+    water_enemy.loadFromFile("resources/textures/water_enemy.png");
     
     //SHIPS
     std::vector<sf::Sprite> ships;
@@ -145,30 +149,46 @@ void play_window(sf::RenderWindow& window, sf::Font& font)
     button_texture.loadFromFile("resources/textures/shield.png");
     sf::Texture shield_texture = create_special_button(100, 100, button_texture);
     sf::Sprite shield_button(shield_texture);
-    shield_button.setPosition(200, 400);
+    shield_button.setPosition(130, 400);
     shield_button.setColor(sf::Color(255,255,255,128));
+
+    //HEAL BUTTON
+    button_texture.loadFromFile("resources/textures/heart.png");
+    sf::Texture heal_texture = create_special_button(100, 100, button_texture);
+    sf::Sprite heal_button(heal_texture);
+    heal_button.setPosition(245, 400);
+    heal_button.setColor(sf::Color(255,255,255,128));
 
     //PANELS PROPERTIES (POSITION AND TEXTURE)
     info_panel.setTexture(&layout);
     info_panel.setPosition(0, 0);
-    radar_panel.setTexture(&radar_texture);
+    //radar_panel.setTexture(&radar_texture);
+    radar_panel.setFillColor(sf::Color::Black);
     radar_panel.setPosition(INFO_WIDTH, 0);
-    player_panel.setTexture(&water_texture);
+    //player_panel.setTexture(&water_texture);
+    player_panel.setFillColor(sf::Color::Black);
     player_panel.setPosition(INFO_WIDTH, RADAR_HEIGHT);
 
     //CELLS
-    for (size_t y = 0; y < radar_map.get_rows(); ++y)             
+    for (size_t x = 0; x < radar_map.get_rows(); ++x)             
     {
-        for (size_t x = 0; x < radar_map.get_columns(); ++x) 
+        for (size_t y = 0; y < radar_map.get_columns(); ++y) 
         {
-            sf::Sprite sprite;
-            sprite.setTexture(cell_texture);
-            sprite.setScale(static_cast<float>(CELL_SIZE_X) / sprite.getTexture()->getSize().x,
-                            static_cast<float>(CELL_SIZE_Y) / sprite.getTexture()->getSize().y);
-            sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, y * CELL_SIZE_Y);
-            enemy_cells.push_back(sprite);
-            sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, RADAR_HEIGHT + y * CELL_SIZE_Y);
-            player_cells.push_back(sprite);
+            // Sprite para el radar (enemigo)
+            sf::Sprite enemy_sprite;
+            enemy_sprite.setTexture(water_enemy);
+            enemy_sprite.setScale(static_cast<float>(CELL_SIZE_X) / water_enemy.getSize().x,
+                                static_cast<float>(CELL_SIZE_Y) / water_enemy.getSize().y);
+            enemy_sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, y * CELL_SIZE_Y);
+            enemy_cells.push_back(enemy_sprite);
+            
+            // Sprite para el mapa del jugador
+            sf::Sprite player_sprite;
+            player_sprite.setTexture(water_player);
+            player_sprite.setScale(static_cast<float>(CELL_SIZE_X) / water_player.getSize().x,
+                                 static_cast<float>(CELL_SIZE_Y) / water_player.getSize().y);
+            player_sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, RADAR_HEIGHT + y * CELL_SIZE_Y);
+            player_cells.push_back(player_sprite);
         }
     }
 
@@ -177,14 +197,15 @@ void play_window(sf::RenderWindow& window, sf::Font& font)
     int y = 0;
     bool is_shot_valid = false;
     bool is_shield_valid = false;
-    sf::Clock clock;
+    bool is_heal_valid = false;
+    //sf::Clock clock;
 
     //PLAY LOOP
     while(window.isOpen())
     {
         sf::Event event;
-        float current_time = clock.restart().asSeconds();
-        float fps = 1.0f / current_time;
+        //float current_time = clock.restart().asSeconds();
+        //float fps = 1.0f / current_time;
 
         //PLAY EVENTS LOOP
         while(window.pollEvent(event))
@@ -202,7 +223,9 @@ void play_window(sf::RenderWindow& window, sf::Font& font)
                 else if (radar_panel.getGlobalBounds().contains(mouse_pos))       
                 {
                     is_shield_valid = false;
+                    is_heal_valid = false;
                     shield_button.setColor(sf::Color(255,255,255,128));
+                    heal_button.setColor(sf::Color(255,255,255,128));
 
                     for (size_t i = 0; i < enemy_cells.size(); ++i) 
                     {
@@ -210,10 +233,9 @@ void play_window(sf::RenderWindow& window, sf::Font& font)
                         {
                             is_shot_valid = true;
                             shot_button.setColor(sf::Color(255,255,255,255));
-                            x = (i / radar_map.get_columns());
-                            y = (i % radar_map.get_columns());
-                            
-                            //GUARDAR COORD   
+                            x = (i % radar_map.get_columns());
+                            y = (i / radar_map.get_columns());        
+                    
                             std::string tipo = radar_map.is_water(x, y) ? "Agua" :
                                                 radar_map.is_boat(x, y) ? "Barco" :
                                                 radar_map.is_failed(x, y) ? "Disparo fallido" :
@@ -227,18 +249,23 @@ void play_window(sf::RenderWindow& window, sf::Font& font)
                 {
                     is_shot_valid = false;
                     shot_button.setColor(sf::Color(255,255,255,128));
+                    
                     for (size_t i = 0; i < player_cells.size(); ++i) 
                     {
                         if (player_cells[i].getGlobalBounds().contains(mouse_pos)) 
                         {
                             is_shield_valid = true;
+                            is_heal_valid = true;
                             shield_button.setColor(sf::Color(255,255,255,255));
-                            x = (i / radar_map.get_columns());
-                            y = (i % radar_map.get_columns());
+                            heal_button.setColor(sf::Color(255,255,255,255));
+                            x = (i % radar_map.get_columns());
+                            y = (i / radar_map.get_columns());
+                            
 
-                            std::string tipo = radar_map.is_water(x, y) ? "Agua" :
-                                                radar_map.is_boat(x, y) ? "Barco" :
-                                                radar_map.is_failed(x, y) ? "Disparo fallido" :
+                            std::string tipo = player_map.is_water(x, y) ? "Agua" :
+                                                player_map.is_boat(x, y) ? "Barco" :
+                                                player_map.is_protected(x, y) ? "Protected" :
+                                                player_map.is_failed(x, y) ? "Disparo fallido" :
                                                 "Barco destruido";
                             std::cout << "Mapa - Casilla clickeada [" << x << ", " << y << "] - " << tipo << std::endl;
                         }
@@ -249,16 +276,49 @@ void play_window(sf::RenderWindow& window, sf::Font& font)
                 {
                     is_shot_valid = false;
                     shot_button.setColor(sf::Color(255,255,255,128));
-                    std::cout<<"Celda ["<<x<<", "<<y<<"] disparada\n";
+                    Map_cell_ptr cell = radar_map.get_ptr_cell(x, y);
+
+                    if (radar_map.is_water(x, y)) 
+                    { 
+                        radar_map.set_fail(cell);
+                        std::cout<<"Celda ["<<x<<", "<<y<<"] Fallaste\n"; 
+                    }
+                    else if (radar_map.is_boat(x,y))
+                    {
+                        radar_map.set_destroy(cell); 
+                        std::cout<<"Celda ["<<x<<", "<<y<<"] Acertaste\n"; 
+                    }                
                 }
                 //SHIELD
                 else if (shield_button.getGlobalBounds().contains(mouse_pos) && is_shield_valid)
                 {
                     shield_button.setColor(sf::Color(255,255,255,128));
+                    heal_button.setColor(sf::Color(255,255,255,128));
+                    
                     is_shield_valid = false;
-                    std::cout<<"Celda ["<<x<<", "<<y<<"] protegida\n";
+                    is_heal_valid = false;
+
+                    Map_cell_ptr cell = player_map.get_ptr_cell(x, y);
+                    player_map.set_protected(cell);
+
+                    std::cout<<"Celda ["<<x<<", "<<y<<"] protegida\n";                                        
+                }
+                //HEAL
+                else if (heal_button.getGlobalBounds().contains(mouse_pos) && is_heal_valid)
+                {
+                    heal_button.setColor(sf::Color(255,255,255,128));
+                    shield_button.setColor(sf::Color(255,255,255,128));
+
+                    is_heal_valid = false;
+                    is_shield_valid = false;
+                    
+                    Map_cell_ptr cell = player_map.get_ptr_cell(x, y);
+                    //Establecer la casilla como heal
+
+                    std::cout<<"Celda ["<<x<<", "<<y<<"] curada\n";                                        
                 }
             }
+
         }
         //PLAY DISPLAY
         window.clear();
@@ -268,6 +328,7 @@ void play_window(sf::RenderWindow& window, sf::Font& font)
         window.draw(exit_button);
         window.draw(shot_button);
         window.draw(shield_button);
+        window.draw(heal_button);
        
         for (const auto& casilla : enemy_cells)
         {

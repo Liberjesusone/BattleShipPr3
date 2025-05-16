@@ -6,7 +6,6 @@ using namespace Play;
 using namespace Objects;
 using namespace BotLogic;
 
-
 std::string num_to_str(int numero)
 {
 	if (numero < 10) 
@@ -14,7 +13,6 @@ std::string num_to_str(int numero)
 	else
 		return std::to_string(numero); // Devuelve el número como string si ya tiene dos cifras
 }
-
 
 namespace Tree
 {
@@ -86,13 +84,16 @@ namespace Party
 	{
 		return 'D';
 	}
+	char Map_cell::protected_type() 
+	{
+		return 'P';
+	}
 	char Map_cell::main_type()  
 	{
 		return 'M';
 	}
 
-
-
+	
 	// Clase Water_cell
 
 	Water_cell::Water_cell() noexcept : Map_cell() 
@@ -109,7 +110,6 @@ namespace Party
 	{
 		return 'W';
 	}
-
 	
 	
 	// Clase Boat_cell
@@ -144,7 +144,6 @@ namespace Party
 	}
 
 	
-
 	// Clase Failed_Cell
 
 	Failed_cell::Failed_cell() noexcept : Map_cell() 
@@ -180,9 +179,26 @@ namespace Party
 	{
 		return 'D';
 	}
+
 	
+	// Clase Protected_cell
+
+	Protected_cell::Protected_cell() noexcept : Map_cell() 
+	{
+		// Empty
+	}
+
+	Protected_cell::Protected_cell(size_t x, size_t y) noexcept : Map_cell(x, y) 
+	{
+		// Empty
+	}
+
+	char Protected_cell::get_type() const noexcept
+	{
+		return 'P';
+	}
 	
-	
+		
 	// Clase Map
 
 	Map::Map() noexcept
@@ -228,6 +244,12 @@ namespace Party
 	{
 		Map_cell_ptr cell = get_ptr_cell(col, row);
 		return std::dynamic_pointer_cast<Destroyed_cell>(cell) != nullptr;
+	}
+
+	bool Map::is_protected(size_t col, size_t row)
+	{
+		Map_cell_ptr cell = get_ptr_cell(col, row);
+		return std::dynamic_pointer_cast<Protected_cell>(cell) != nullptr;
 	}
 
 	size_t Map::get_columns() const noexcept
@@ -310,32 +332,38 @@ namespace Party
 		return get_ptr_cell(location.first, ++location.second);
 	}
 
-	void Map::set_water(Map_cell_ptr cell) const noexcept
+	void Map::set_water(Map_cell_ptr cell) noexcept
 	{
-		auto location = cell->get_location();
-		cell = std::make_shared<Water_cell>(location.first, location.second);
+	    auto location = cell->get_location();
+	    matrix[location.first][location.second] = std::make_shared<Water_cell>(location.first, location.second);
 	}
 
-	void Map::set_destroy(Map_cell_ptr cell) const noexcept
-	{
-		auto location = cell->get_location();
-		cell = std::make_shared<Destroyed_cell>(location.first, location.second);
+	void Map::set_boat(Map_cell_ptr cell) noexcept
+	{    
+	    auto location = cell->get_location();
+	    matrix[location.first][location.second] = std::make_shared<Boat_cell>(location.first, location.second);
 	}
 
-	void Map::set_fail(Map_cell_ptr cell) const noexcept
+	void Map::set_fail(Map_cell_ptr cell) noexcept
 	{
-		auto location = cell->get_location();
-		cell = std::make_shared<Failed_cell>(location.first, location.second);
+	    auto location = cell->get_location();
+	    matrix[location.first][location.second] = std::make_shared<Failed_cell>(location.first, location.second);
 	}
 
-	void Map::set_boat(Map_cell_ptr cell) const noexcept
-	{	
-		auto location = cell->get_location();
-		cell = std::make_shared<Boat_cell>(location.first, location.second);
-		//OJO asinganr la posicion
+
+	void Map::set_protected(Map_cell_ptr cell) noexcept
+	{
+	    auto location = cell->get_location();
+	    matrix[location.first][location.second] = std::make_shared<Protected_cell>(location.first, location.second);
+	}
+
+
+	void Map::set_destroy(Map_cell_ptr cell) noexcept
+	{
+	    auto location = cell->get_location();
+	    matrix[location.first][location.second] = std::make_shared<Destroyed_cell>(location.first, location.second);
 	}
 }
-
 
 namespace Objects
 {
@@ -362,7 +390,6 @@ namespace Objects
 	}
 
 
-	
 	// Clase ChargedShot
 
 	ChargedShot::ChargedShot() noexcept
@@ -391,8 +418,7 @@ namespace Objects
 		}											  // Si no es ninguna de las anteriores no pasa nada
 	}
 
-	
-	
+		
 	// Clase HealCell
 	
 	HealCell::HealCell() noexcept
@@ -406,8 +432,7 @@ namespace Objects
 		mapa.set_boat(cell);
 	}
 
-	
-	
+		
 	// Clase Item
 
 	Item::Item(size_t stock, std::string name) noexcept : stock(stock), name(name) 
@@ -450,7 +475,6 @@ namespace Objects
 	}
 
 
-
 	// Clase Rocket
 
 	template<typename DamageType>
@@ -490,10 +514,6 @@ namespace Objects
 	{
 		return 'C';
 	}
-
-
-
-	// Clase
 }
 
 
@@ -505,7 +525,6 @@ namespace Play
 	{
 		return std::hash<size_t>()(p.first) ^ (std::hash<size_t>()(p.second) << 1);  // Generacion de codigo hash en base a los dos valores
 	}
-
 
 
 	// Clase Boat
@@ -529,7 +548,6 @@ namespace Play
 	{
 		this->boat_coordinates.size();
 	}
-
 
 
 	// Clase Fleet
@@ -557,7 +575,6 @@ namespace Play
 	}
 
 
-
 	// Clase Arsenal
 
 	Arsenal::Arsenal() noexcept
@@ -569,7 +586,6 @@ namespace Play
 	{
 		return this->items;
 	}
-
 
 
 	// Clase Build
@@ -595,7 +611,6 @@ namespace Play
 	}
 
 
-
 	// Clase Player
 
 	Player::Player() noexcept
@@ -617,12 +632,6 @@ namespace Play
 	{
 		return this->build;
 	}
-
-
-
-	// Clase 
-
-
 }
 
 
@@ -661,7 +670,4 @@ namespace BotLogic
 
 		return Movement(selected_cell, item);		
 	}
-
-
-
 }
