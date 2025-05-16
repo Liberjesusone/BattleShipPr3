@@ -400,44 +400,49 @@ int play_window(sf::RenderWindow& window)
 
 int build_window(sf::RenderWindow& window)
 {
-    window.clear();
-
     // Crear la ventana en pantalla completa
+    window.clear();
     window.setTitle("Battle Ship - Build");
 
-    // Tamaños y divisiones de la pantalla
-    sf::Vector2u windowSize = window.getSize();
-    const int INFO_WIDTH = windowSize.x / 3;         // 1/3 para la información
-    const int MAP_WIDTH = windowSize.x - INFO_WIDTH; // 2/3 para mapas
-    const int MAP_HEIGHT = windowSize.y;
 
-    const int RADAR_HEIGHT = MAP_HEIGHT / 2;         // Altura de ambos mapas
-
-    // Construimos los mapas
+    // Construimos los mapas y el jugador
     Map mapa(5, 10);
-    Player player(mapa);
+    Player player("Jugador", mapa);
+
+
+    // Tamaños y divisiones de la pantalla
+    sf::Vector2u window_size = window.getSize();
+    const size_t WIN_WIDTH = window_size.x;
+    const size_t WIN_HEIGHT = window_size.y;
     
+    const size_t INFO_WIDTH = window_size.x / 3;         // 1/3 para la información
+
+    const size_t MAP_WIDTH = window_size.x - INFO_WIDTH; // 2/3 para el mapa
+    const size_t MAP_HEIGHT = WIN_HEIGHT * 0.8;
+
+    const size_t CELL_SIZE_X = MAP_WIDTH / mapa.get_columns();  // Ancho y alto de las celdas
+    const size_t CELL_SIZE_Y = MAP_HEIGHT / mapa.get_rows();
+
+    const size_t TEXT_SIZE = WIN_HEIGHT * 0.05;
+    const size_t BOTON_SIZE_X = WIN_WIDTH * 0.08;
+    const size_t BOTON_SIZE_Y = BOTON_SIZE_X;
+
     // ---- CARGAR TEXTURAS ---- //
+    sf::Texture misil_texture = create_shot_texture(MAP_WIDTH * 0.10, MAP_WIDTH * 0.10);
+    sf::Texture circle_texture = create_circule_texture(CELL_SIZE_X, CELL_SIZE_Y);
+    sf::Texture comodin_texture = Painter::Resources::get_texture(Painter::Resources::heart_image());
     sf::Texture agua_texture, barco_texture, fallo_texture, destruido_texture, radar_texture, pirate_map;
     load_textures(agua_texture, barco_texture, fallo_texture, destruido_texture, radar_texture, pirate_map);
-    
-    // Creacion del tamaño de cada celda y la textura de celda vacia = circle_texture
-    const int CELL_SIZE_X = MAP_WIDTH / mapa.get_columns();  // Ancho y alto de las celdas
-    const int CELL_SIZE_Y = RADAR_HEIGHT / mapa.get_rows();
-
-    sf::Texture circle_texture = create_circule_texture(CELL_SIZE_X, CELL_SIZE_Y);
 
 
     // ---- PANELES ---- //
-    // Posicionamiento de paneles
-    sf::RectangleShape info_panel(sf::Vector2f(MAP_WIDTH, MAP_HEIGHT));     // panel de informacion a la izq
+    sf::RectangleShape info_panel(sf::Vector2f(WIN_WIDTH, WIN_HEIGHT));     // panel de informacion a la izq
     info_panel.setPosition(0, 0);
     info_panel.setTexture(&pirate_map);
 
-    sf::RectangleShape player_panel(sf::Vector2f(MAP_WIDTH, RADAR_HEIGHT)); // panel del mapa propio abajo a la derecha
-    player_panel.setPosition(INFO_WIDTH, MAP_HEIGHT / 3);
+    sf::RectangleShape player_panel(sf::Vector2f(MAP_WIDTH, MAP_HEIGHT)); // panel del mapa propio abajo a la derecha
+    player_panel.setPosition(INFO_WIDTH, WIN_HEIGHT * 0.1);
     player_panel.setTexture(&agua_texture);
-
 
     // Asignar una textura a cada casilla del mapa
     std::vector<sf::Sprite> player_casillas;
@@ -458,41 +463,34 @@ int build_window(sf::RenderWindow& window)
             sprite.setScale(static_cast<float>(CELL_SIZE_X) / sprite.getTexture()->getSize().x,
                             static_cast<float>(CELL_SIZE_Y) / sprite.getTexture()->getSize().y);
 
-            sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, MAP_HEIGHT/3 + y * CELL_SIZE_Y);
+            sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, WIN_HEIGHT * 0.1 + y * CELL_SIZE_Y);
             player_casillas.push_back(sprite);
         }
     }
 
     // ---- BOTONES ---- // 
-    sf::Font font;
-    if (!font.loadFromFile("resources/fonts/tittle_font.ttf")) 
-    {
-        throw std::runtime_error("No se pudo cargar la fuente.");
-    }
+    sf::Font font = Painter::Resources::get_font(Painter::Resources::titulos_font());
 
     // Botón de Salida
-    sf::Text exit_button("Salir", font, 50);        //OJO darle a los bones un tamaño escalable
+    sf::Text exit_button("Salir", font, TEXT_SIZE);        //OJO darle a los bones un tamaño escalable
     exit_button.setFillColor(sf::Color::Yellow);
-    exit_button.setPosition(20, 20);
+    exit_button.setPosition(MAP_WIDTH * 0.05, WIN_HEIGHT * 0.05);
 
     // Botón de jugar
-    sf::Text play_button("Jugar", font, 50);
+    sf::Text play_button("Jugar", font, TEXT_SIZE);
     play_button.setFillColor(sf::Color::Yellow);
-    play_button.setPosition(190, 20);
+    play_button.setPosition(MAP_WIDTH * 0.10 + exit_button.getGlobalBounds().getSize().x, WIN_HEIGHT * 0.05);
 
     // Boton de Disparar
-    sf::Texture misil_texture = create_shot_texture(100, 100);
     sf::Sprite shot_button(misil_texture);
-    shot_button.setPosition((MAP_WIDTH / 2) - 100, MAP_HEIGHT / 2);
+    shot_button.setPosition((MAP_WIDTH / 2) - shot_button.getGlobalBounds().getSize().x, WIN_HEIGHT / 2);
 
 
     // ---- BARCOS ---- // 
     std::vector<sf::Sprite> barcos;
-    sf::Texture texture;
-    texture.loadFromFile("resources/textures/boteNaval-S.png");
     for (int i = 0; i < 5; ++i) // 5 barcos con tamaños decrecientes
     {
-        sf::Sprite barco(texture);
+        sf::Sprite barco(barco_texture);
     
         // Factor de reducción progresiva
         double scale_factor = 1.30 - (i * 0.15);    // Reduce cada barco un 15% más pequeño que el anterior
@@ -500,71 +498,65 @@ int build_window(sf::RenderWindow& window)
         barco.setScale(scale_factor, scale_factor_y); // Mantiene proporción correcta
     
         // Ajustar posición para que los barcos se alineen correctamente
-        barco.setPosition(10, i * (texture.getSize().y - 7) + 90); // Espaciado vertical dinámico
+        barco.setPosition(MAP_WIDTH * 0.01, i * (barco_texture.getSize().y - 7) + 90); // Espaciado vertical dinámico
         barcos.push_back(barco);
     }
 
+
     // ---- COMODINES ---- //  
     std::vector<sf::Sprite> comodines;
-    std::vector<sf::Text> comodinCantidad;
-    sf::Texture comodinTexture;
-    comodinTexture.loadFromFile("resources/textures/heart.png");
-    for (int i = 0; i < 2; ++i) 
+    comodines.resize(2);
+    std::vector<sf::Text> cant_comodin;
+    
+    sf::Sprite comodin(comodin_texture);
+    comodin.setScale(static_cast<double>(BOTON_SIZE_X) / comodin_texture.getSize().x,
+                         static_cast<double>(BOTON_SIZE_Y) / comodin_texture.getSize().y);
+    comodines[0] = comodines [1] = comodin;
+    comodines[0].setPosition(WIN_WIDTH * 0.01, WIN_HEIGHT * 0.51);
+    comodines[1].setPosition(WIN_WIDTH * 0.04 + BOTON_SIZE_X, WIN_HEIGHT * 0.51);
+
+    for (int i = 0; i < comodines.size(); ++i)      // Texto de cantidad
     {
-        sf::Sprite comodin(comodinTexture);
-        comodin.setScale(static_cast<double>(MAP_WIDTH / 7) / comodinTexture.getSize().x,
-                         static_cast<double>(MAP_HEIGHT / 7) / comodinTexture.getSize().y);
-        comodin.setPosition(i * (MAP_WIDTH / 7) * 1.20, MAP_HEIGHT / 2);
-        comodines.push_back(comodin);
-        
-        sf::Text cantidad("3", font, 50); // Ejemplo: 3 comodines restantes
+        sf::Text cantidad("2", font, TEXT_SIZE);
         cantidad.setFillColor(sf::Color::White);
-        float padding_x = comodin.getTexture()->getSize().x / 45;
-        float padding_y = comodin.getTexture()->getSize().y / 45;
-        cantidad.setPosition(comodin.getPosition().x + padding_x, comodin.getPosition().y + padding_y);
-        comodinCantidad.push_back(cantidad);
+        sf::FloatRect text_bounds = cantidad.getLocalBounds();   // lo asingamos dentro del espacio del sprite
+        cantidad.setOrigin(text_bounds.left, text_bounds.top);
+        cantidad.setPosition(comodines[i].getPosition());
+        cant_comodin.push_back(cantidad);
     }
+
 
     // ---- PROYECTILES ---- //  
     std::vector<sf::Sprite> proyectiles;
-    std::vector<sf::Text> proyectilCantidad;
-    sf::Texture projectile_texture;
-    projectile_texture.loadFromFile("resources/textures/fallo.jpg");
+    proyectiles.resize(4);
+    std::vector<sf::Text> cant_proyectiles;
+    
+    sf::Sprite proyectile(fallo_texture);
+    proyectile.setScale(static_cast<double>(BOTON_SIZE_X) / fallo_texture.getSize().x,
+                        static_cast<double>(BOTON_SIZE_Y) / fallo_texture.getSize().y);
+    proyectiles[0] = proyectiles[1] = proyectiles [2] = proyectiles[3] = proyectile;
+    proyectiles[0].setPosition(WIN_WIDTH * 0.04, WIN_HEIGHT * 0.67);
+    proyectiles[1].setPosition(WIN_WIDTH * 0.04, WIN_HEIGHT * 0.69 + BOTON_SIZE_Y);
+    proyectiles[2].setPosition(WIN_WIDTH * 0.08 + BOTON_SIZE_X, WIN_HEIGHT * 0.67);
+    proyectiles[3].setPosition(WIN_WIDTH * 0.08 + BOTON_SIZE_X, WIN_HEIGHT * 0.69 + BOTON_SIZE_Y);
 
-    int x_position = 25;
-    int y_position = MAP_HEIGHT * 2 / 3 ;
-    int j = 0;
-    for (int i = 0; i < 4; ++i) 
+    for (int i = 0; i < proyectiles.size(); ++i)        // Texto de cantidad 
     {
-        if (i == 2)
-        {
-            x_position = 35 + MAP_WIDTH / 7 * 1.2;
-            j = 0;
-        }
-
-        sf::Sprite proyectil(projectile_texture);
-        proyectil.setScale(static_cast<double>(MAP_WIDTH / 7) / projectile_texture.getSize().x,
-                           static_cast<double>(MAP_HEIGHT / 7) / projectile_texture.getSize().y);
-        proyectil.setPosition(x_position, y_position + j * (MAP_HEIGHT / 7 * 1.2));
-        proyectiles.push_back(proyectil);
-
-        sf::Text cantidad("5", font, 50); // Ejemplo: 5 proyectiles restantes
+        sf::Text cantidad("5", font, TEXT_SIZE);
         cantidad.setFillColor(sf::Color::White);
-        cantidad.setPosition(proyectil.getPosition().x, proyectil.getPosition().y);
-        proyectilCantidad.push_back(cantidad);
-
-        ++j;
+        sf::FloatRect text_bounds = cantidad.getLocalBounds();
+        cantidad.setOrigin(text_bounds.left, text_bounds.top);
+        cantidad.setPosition(proyectiles[i].getPosition());
+        cant_proyectiles.push_back(cantidad);
     }
 
-    sf::Clock clock;
-    window.setFramerateLimit(60);
     // Bucle principal del juego
+    bool holding = false;
+    size_t boat_indx;
+    window.setFramerateLimit(60);
     while (window.isOpen()) 
     {
-        // Compute de frame rate
-        float current_time = clock.restart().asSeconds();
-        float fps = 1.0f / current_time;
-
+        sf::Vector2f mouse_pos;
         sf::Event event;
         while (window.pollEvent(event))
         {
@@ -572,17 +564,35 @@ int build_window(sf::RenderWindow& window)
             {
                 window.close();
             }
+            
+            mouse_pos = sf::Vector2f(event.mouseButton.x, event.mouseButton.y);
+
+            if (event.type == sf::Event::MouseMoved && holding) 
+            {
+                barcos[boat_indx].setPosition(event.mouseMove.x, event.mouseMove.y);
+            }
 
             // Detección de clic izquierdo
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
-            {
-                sf::Vector2f mouse_pos(event.mouseButton.x, event.mouseButton.y);
-
+            {                
                 if (player_panel.getGlobalBounds().contains(mouse_pos)) // En el panel del mapa 
                 {
                     for (size_t i = 0; i < player_casillas.size(); ++i) 
                     {
-                        if (player_casillas[i].getGlobalBounds().contains(mouse_pos)) 
+                        if (player_casillas[i].getGlobalBounds().contains(mouse_pos) && holding) // si clickeo una celda con el barco tomado
+                        {
+                            int x = (i % mapa.get_columns());
+                            int y = (i / mapa.get_columns());
+
+                            std::string tipo = mapa.is_water(x, y) ? "Agua" :
+                                            mapa.is_boat(x, y) ? "Barco" :
+                                            mapa.is_failed(x, y) ? "Disparo fallido" :
+                                            "Barco destruido";
+
+                            Boat bote(4 - boat_indx, Coordinates(x, y));
+                            Painter::Drawer::draw(player_casillas, mapa, bote);    
+                        }
+                        else if (player_casillas[i].getGlobalBounds().contains(mouse_pos)) // si solo la clickeo 
                         {
                             int x = (i % mapa.get_columns());
                             int y = (i / mapa.get_columns());
@@ -608,6 +618,23 @@ int build_window(sf::RenderWindow& window)
                         std::cout << "Jugar. Empezando partida..." << std::endl;
                         play_window(window);
                     }
+                    for (size_t i = 0; i < comodines.size(); ++i)
+                    {
+                        if (comodines[i].getGlobalBounds().contains(mouse_pos))
+                        {
+                            std::cout << "Comodin " << i << "\n";
+                        }
+                    }
+                    for (size_t i = 0; i < barcos.size(); ++i)
+                    {
+                        if (barcos[i].getGlobalBounds().contains(mouse_pos))
+                        {
+                            std::cout << "Barco de " << 4 - i << " posiciones\n";    
+                            barcos[i].setPosition(mouse_pos);
+                            boat_indx = i;
+                            holding = !holding;
+                        }
+                    }
                     for (size_t i = 0; i < proyectiles.size(); ++i) 
                     {
                         if (proyectiles[i].getGlobalBounds().contains(mouse_pos)) 
@@ -617,7 +644,6 @@ int build_window(sf::RenderWindow& window)
                     }  
                 }
             }
-
         }
 
         window.clear();
@@ -630,9 +656,9 @@ int build_window(sf::RenderWindow& window)
         // Dibujar los items del panel de info
         for (const auto& barco : barcos) window.draw(barco);
         for (const auto& comodin : comodines) window.draw(comodin);
-        for (const auto& cantidad : comodinCantidad) window.draw(cantidad);
+        for (const auto& cantidad : cant_comodin) window.draw(cantidad);
         for (const auto& proyectil : proyectiles) window.draw(proyectil);
-        for (const auto& cantidad : proyectilCantidad) window.draw(cantidad);
+        for (const auto& cantidad : cant_proyectiles) window.draw(cantidad);
 
         // Dibujar los vectores de sprites
         for (const auto& casilla : player_casillas) window.draw(casilla);

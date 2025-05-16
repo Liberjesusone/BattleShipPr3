@@ -310,28 +310,29 @@ namespace Party
 		return get_ptr_cell(location.first, ++location.second);
 	}
 
-	void Map::set_water(Map_cell_ptr cell) const noexcept
+	void Map::set_water(Map_cell_ptr cell) noexcept
 	{
 		auto location = cell->get_location();
 		cell = std::make_shared<Water_cell>(location.first, location.second);
 	}
 
-	void Map::set_destroy(Map_cell_ptr cell) const noexcept
+	void Map::set_destroy(Map_cell_ptr cell) noexcept
 	{
 		auto location = cell->get_location();
 		cell = std::make_shared<Destroyed_cell>(location.first, location.second);
 	}
 
-	void Map::set_fail(Map_cell_ptr cell) const noexcept
+	void Map::set_fail(Map_cell_ptr cell) noexcept
 	{
 		auto location = cell->get_location();
 		cell = std::make_shared<Failed_cell>(location.first, location.second);
 	}
 
-	void Map::set_boat(Map_cell_ptr cell) const noexcept
+	void Map::set_boat(Map_cell_ptr cell) noexcept
 	{	
 		auto location = cell->get_location();
 		cell = std::make_shared<Boat_cell>(location.first, location.second);
+		matrix[location.first][location.second] = std::make_shared<Boat_cell>(location.first, location.second);
 		//OJO asinganr la posicion
 	}
 }
@@ -515,6 +516,17 @@ namespace Play
 		// Empty
 	}
 
+	Boat::Boat(size_t size, Coordinates first_cell) noexcept
+	{
+		for (int i = 0; i < size && i < 5; ++i)
+		{
+			Coordinates coord;
+			coord.first = first_cell.first + i;
+			coord.second = first_cell.second;
+			boat_coordinates.insert(coord);
+		}
+	}
+
 	bool Boat::contains(Map_cell_ptr cell) const noexcept
 	{
 		return this->boat_coordinates.contains(cell->get_location());
@@ -603,7 +615,7 @@ namespace Play
 		// Empty
 	}
 
-	Player::Player(Map& mapa) noexcept : mapa(mapa)
+	Player::Player(std::string name, Map& mapa) noexcept : name(name), mapa(mapa)
 	{
 		// Emtpy
 	}

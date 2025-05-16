@@ -53,7 +53,7 @@ namespace Painter
              * @param texture_name Nombre de la textura, SE DEBE DE PASAR CON LAS FUNCIONES STATICAS _png(), ellas se encargan
              * de manejar los nombres de los archivos, Ejm: get_texture(Resources::boat_png());
              */
-            static sf::Texture get_texture(std::string texture_name);
+            static sf::Texture& get_texture(std::string texture_name);
             
             /**
              * @brief Devuelve la fuente que con el nombre que se paso
@@ -89,18 +89,7 @@ namespace Painter
             // Constructor por defecto
             Drawer() noexcept;
 
-
-            void draw(std::vector<sf::Sprite> sprites_cells, Map mapa, Boat bote)
-            {
-                for (auto boat_coord : bote.get_boat_coordinates())
-                {
-                    // coordenada y representa filas, es decir y * cant columas (casillas por filas) = indice 1
-                    // coordenada x representa columnas es decir x = indice 2
-                    // el indice en el vector es = indice1 + indice2 
-                    size_t vec_indx = boat_coord.second * mapa.get_columns()  + boat_coord.first;
-                
-                    sprites_cells[vec_indx].setTexture(Resources::get_texture(Resources::boat_body_image()));
-                }
-            }
+            // Dibuja un bote en el mapa y cambia los sprites de celdas por botes
+            static void draw(std::vector<sf::Sprite>& sprites_cells, Map& mapa, Boat bote);
     };
 }

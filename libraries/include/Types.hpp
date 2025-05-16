@@ -708,7 +708,7 @@ namespace Party
 			 * @param row Fila a marcar
 			 * @param col Columna a marcar 
 			 */
-			void set_water(Map_cell_ptr cell) const noexcept;
+			void set_water(Map_cell_ptr cell) noexcept;
 
 			/**
 			 * @brief Funcion para marcar una casilla como destruida
@@ -716,7 +716,7 @@ namespace Party
 			 * @param row Fila a marcar
 			 * @param col Columna a marcar
 			 */
-			void set_destroy(Map_cell_ptr cell) const noexcept;
+			void set_destroy(Map_cell_ptr cell) noexcept;
 
 			/**
 			 * @brief Funcion para marcar una casilla como fallada, cuando un disparo no acierta
@@ -724,7 +724,7 @@ namespace Party
 			 * @param row Fila a marcar
 			 * @param col Columna a marcar
 			 */
-			void set_fail(Map_cell_ptr cell) const noexcept;
+			void set_fail(Map_cell_ptr cell) noexcept;
 
 			/**
 			 * @brief Funcion para marcar una casilla ocupada por un bote, cuando un disparo no acierta
@@ -732,7 +732,7 @@ namespace Party
 			 * @param row Fila a marcar
 			 * @param col Columna a marcar
 			 */
-			void set_boat(Map_cell_ptr cell) const noexcept;
+			void set_boat(Map_cell_ptr cell) noexcept;
 	};
 }
 
@@ -952,6 +952,9 @@ namespace Play
 			// Constructor por defecto
 			Boat() noexcept;
 
+			// Constructor parametrico
+			Boat(size_t size, Coordinates first_cell) noexcept;
+
 			// Functions
 
 			/**
@@ -1054,7 +1057,7 @@ namespace Play
 			Player() noexcept;
 
 			// Constructor parametrico
-			Player(Map& mapa) noexcept;
+			Player(std::string name, Map& mapa) noexcept;
 
 			// Getters
 
