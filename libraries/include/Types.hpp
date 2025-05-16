@@ -15,17 +15,11 @@
 #include <unordered_set>
 #include <functional>
 
-// Archivos para declarar los archivos cabecera que utilizara el programa, y los principales tipos de datos
-
-
-// Declaracion de los espacios de nombres
 namespace Tree 
 {
-	// Declaracion de clases
 	template <typename T>
 	class Node;
 
-	// Declaracion de funciones libres
 	template <typename Tree>
 	int cardinality(Tree* root);
 
@@ -54,29 +48,28 @@ namespace Tree
 
 	int get_random_uniform(int n);
 }
+
 namespace Party
 {
-	// Declaracion de clases
 	class Map_cell;
 	class Water_cell;
 	class Boat_cell;
 	class Failed_cell;
 	class Destroyed_cell;
-
+	class Protected_cell;
 	class Map;
 
-	// Declaracion de alias de tipos
 	using Coordinates = std::pair<size_t, size_t>;	
-
 	using Map_cell_ptr = std::shared_ptr<Map_cell>;
 	using Boat_cell_ptr = std::shared_ptr<Boat_cell>;
 	using Water_cell_ptr = std::shared_ptr<Water_cell>;
 	using Failed_cell_ptr = std::shared_ptr<Failed_cell>;
 	using Destroyed_cell_ptr = std::shared_ptr<Destroyed_cell>;
+	using Protected_cell_ptr = std::shared_ptr<Protected_cell>;
 }
+
 namespace Objects 
 {
-	// Declaracion de clases
 	class SingleShot;
 	class ChargedShot;
 	class HealCell;
@@ -86,13 +79,11 @@ namespace Objects
 	template <typename EffectType>
 	class Comodin;
 
-	// Declaracions de alias de tipos
 	using Item_ptr = std::shared_ptr<Item>;
-
 }
+
 namespace Play 
 {
-	// Declaracion de clases
 	struct PairHash;
 	class Boat;
 	class Fleet;
@@ -100,15 +91,13 @@ namespace Play
 	class Build;
 	class Player;
 
-	// Declaracion de alias de tipos
 	using Boat_ptr = std::shared_ptr<Boat>;
 }
+
 namespace BotLogic 
 {
-	// Declaracion de clases
 	class Bot;
 
-	// Declaracion de alias de tipos
 	using Movement = std::pair<Party::Coordinates, Objects::Item_ptr>;
 }
 
@@ -118,8 +107,6 @@ using namespace Objects;
 using namespace Play;
 using namespace BotLogic;
 
-
-// Definicion de los espacios de nombres 
 
 /**
  * @brief Agrupa la estructura de datos para el arbol que se usara como arbol de jugadas para el Bot
@@ -469,7 +456,8 @@ namespace Party
 			static char water_type();
 			static char boat_type();
 			static char failed_type();
-			static char destroyed_type(); 
+			static char destroyed_type();
+			static char protected_type(); 
 			static char main_type();
 	};
 	class Water_cell : public Map_cell
@@ -540,6 +528,20 @@ namespace Party
 			Destroyed_cell(size_t x, size_t y) noexcept;
 
 			virtual ~Destroyed_cell() = default; // Ensure the class is polymorphic
+
+			// Getters
+			virtual char get_type() const noexcept;
+	};
+	class Protected_cell : public Map_cell
+	{
+		public:
+			// Constructor por defecto
+			Protected_cell() noexcept;
+ 
+			// Constructor parametrico
+			Protected_cell(size_t x, size_t y) noexcept;
+
+			virtual ~Protected_cell() = default; // Ensure the class is polymorphic
 
 			// Getters
 			virtual char get_type() const noexcept;
@@ -631,6 +633,16 @@ namespace Party
 			 * @return True si esta marcada como destruida, False si es cualquier otra cosa
 			 */
 			bool is_destroyed(size_t col, size_t row);
+
+			/**
+			 * @brief Revisa si la casilla está o no protegida
+			 * 
+			 * @param row Fila a revisar
+			 * @param col Columna a revisar
+			 * 
+			 * @return True si esta marcada como protegida, False si es cualquier otra cosa
+			 */
+			bool is_protected(size_t col, size_t row);
 
 
 			// GETTERS
@@ -733,6 +745,14 @@ namespace Party
 			 * @param col Columna a marcar
 			 */
 			void set_boat(Map_cell_ptr cell) noexcept;
+
+			/**
+			 * @brief Funcion para marcar una casilla como protegida
+			 * 
+			 * @param row Fila a marcar
+			 * @param col Columna a marcar
+			 */
+			void set_protected(Map_cell_ptr cell) noexcept;
 	};
 }
 
