@@ -374,6 +374,7 @@ int build_window(sf::RenderWindow& window)
     Map mapa(5, 10);
     Map radar(5, 10);    
     Bot::create_map(radar);     //Creacion del mapa del bot
+    Bot bot("Bot", radar, mapa);
     Player player("Jugador", mapa, radar);
 
     // Tamaños y divisiones de la pantalla
@@ -397,8 +398,8 @@ int build_window(sf::RenderWindow& window)
     sf::Texture misil_texture = create_special_button(MAP_WIDTH * 0.10, MAP_WIDTH * 0.10, Resources::get_texture(Resources::missile_image()));
     sf::Texture circle_texture = create_cell(CELL_SIZE_X, CELL_SIZE_Y);
     sf::Texture comodin_texture = Resources::get_texture(Resources::heart_image());
-    sf::Texture agua_texture, barco_texture, fallo_texture, destruido_texture, radar_texture, wood_table_texture;
-    load_textures(agua_texture, barco_texture, fallo_texture, destruido_texture, radar_texture, wood_table_texture);
+    sf::Texture water_texture, barco_texture, fallo_texture, destruido_texture, radar_texture, wood_table_texture;
+    load_textures(water_texture, barco_texture, fallo_texture, destruido_texture, radar_texture, wood_table_texture);
 
 
     // ---- PANELES ---- //
@@ -408,7 +409,7 @@ int build_window(sf::RenderWindow& window)
 
     sf::RectangleShape player_panel(sf::Vector2f(MAP_WIDTH, MAP_HEIGHT)); // panel del mapa propio abajo a la derecha
     player_panel.setPosition(INFO_WIDTH, WIN_HEIGHT * 0.1);
-    player_panel.setTexture(&agua_texture);
+    player_panel.setTexture(&water_texture);
 
     // Asignar una textura a cada casilla del mapa
     std::vector<sf::Sprite> player_casillas;
@@ -425,7 +426,7 @@ int build_window(sf::RenderWindow& window)
                 sprite.setTexture(fallo_texture);
             else if (mapa.is_destroyed(x, y))
                 sprite.setTexture(destruido_texture);
-
+            
             sprite.setScale(static_cast<float>(CELL_SIZE_X) / sprite.getTexture()->getSize().x,
                             static_cast<float>(CELL_SIZE_Y) / sprite.getTexture()->getSize().y);
 
@@ -466,6 +467,18 @@ int build_window(sf::RenderWindow& window)
         // Ajustar posición para que los barcos se alineen correctamente
         barco.setPosition(MAP_WIDTH * 0.01, i * (barco_texture.getSize().y - 7) + 90); // Espaciado vertical dinámico
         barcos.push_back(barco);
+    }
+    
+    // BARCOS VACIOS PARA REPRESENTAR QUE FUERON TOMADOS //
+    std::vector<sf::Sprite> empty_boats;
+    empty_boats.resize(5);
+    for (int i = 0; i < 5; ++i) // Al tomarlo crea un sprite vacio que ocupa su posicion 
+    {
+        sf::Sprite empty_boat(barco_texture);
+        empty_boat.setScale(barcos[i].getScale());
+        empty_boat.setColor(sf::Color(255, 255, 255, 128));
+        empty_boat.setPosition(barcos[i].getPosition());
+        empty_boats[i] = empty_boat;
     }
 
 
@@ -517,6 +530,7 @@ int build_window(sf::RenderWindow& window)
     }
 
     // Bucle principal del juego
+    bool horizontal = true;
     bool holding = false;
     size_t boat_indx;
     window.setFramerateLimit(60);
@@ -533,7 +547,7 @@ int build_window(sf::RenderWindow& window)
             
             mouse_pos = sf::Vector2f(event.mouseButton.x, event.mouseButton.y);
 
-            if (event.type == sf::Event::MouseMoved && holding) 
+            if (event.type == sf::Event::MouseMoved && holding)         // Mover el bote siguiendo el mouse 
             {
                 barcos[boat_indx].setPosition(event.mouseMove.x, event.mouseMove.y);
             }
@@ -547,16 +561,41 @@ int build_window(sf::RenderWindow& window)
                     {
                         if (player_casillas[i].getGlobalBounds().contains(mouse_pos) && holding) // si clickeo una celda con el barco tomado
                         {
-                            int x = (i % mapa.get_columns());
-                            int y = (i / mapa.get_columns());
+                            size_t x = (i % mapa.get_columns());
+                            size_t y = (i / mapa.get_columns());
 
                             std::string tipo = mapa.is_water(x, y) ? "Agua" :
                                             mapa.is_boat(x, y) ? "Barco" :
                                             mapa.is_failed(x, y) ? "Disparo fallido" :
                                             "Barco destruido";
+                            
+                            // No poner un barco sobre otro 
+                            if (tipo == "Barco")
+                            {
+                                break;
+                            }
 
-                            Boat bote(4 - boat_indx, Coordinates(x, y));
-                            Drawer::draw(player_casillas, mapa, bote);    
+                            // Confirmar que cabe en el mapa
+                            size_t bote_size = 5 - boat_indx; 
+                            if (bote_size + x > mapa.get_columns() && horizontal)
+                            {
+                                break;
+                            }
+                            else if (bote_size + y > mapa.get_rows() && !horizontal)
+                            {
+                                break;
+                            }
+
+                            Coordinates coord(x, y);
+                            Boat bote(bote_size, coord, horizontal);
+                            sf::Texture& texture = Resources::get_texture(Resources::boat_body_image());
+                            Drawer::draw(player_casillas, mapa, bote, texture);  
+                            player.get_build().get_fleet().add_boat(std::make_shared<Boat>(bote)); // agregamos el barco al player
+
+                            // Hacerlo invisible
+                            barcos[boat_indx].setPosition(-100, -100);
+                            holding = false;
+                            horizontal = true;
                         }
                         else if (player_casillas[i].getGlobalBounds().contains(mouse_pos)) // si solo la clickeo 
                         {
@@ -569,39 +608,62 @@ int build_window(sf::RenderWindow& window)
                                             "Barco destruido";
 
                             std::cout << "Mapa - Casilla clickeada [" << x << ", " << y << "] - " << tipo << std::endl;
+                            if (tipo == "Barco")    // si clickeo el barco
+                            {
+                                auto boat = player.get_build().get_fleet().get_boat_of_cell(mapa.get_ptr_cell(x, y));   
+                                size_t indx = 5 - boat->get_size(); // indice correspondiente al sprite
+
+                                Drawer::draw(player_casillas, mapa, *boat, circle_texture);
+                                for (auto coord : boat->get_boat_coordinates()) // devolvemos a agua todas las casillas
+                                {
+                                    std::cout << "convirtiendo la celda " << coord.first << " " << coord.second << "en agua\n";
+                                    mapa.set_water(mapa.get_ptr_cell(coord.first, coord.second));
+                                }
+
+                                barcos[indx].setRotation(0);
+                                barcos[indx].setPosition(empty_boats[indx].getPosition());
+                                horizontal = true;
+
+                                player.get_build().get_fleet().delete_boat(boat);
+                            }
                         }
                     }  
                 }
                 else if (info_panel.getGlobalBounds().contains(mouse_pos))   // En el panel de informacion
                 {
-                    if (exit_button.getGlobalBounds().contains(mouse_pos)) // Clic en "Salir"
+                    if (holding)                                    // Soltar de nuevo el bote en su lugar
+                    {
+                        barcos[boat_indx].setPosition(empty_boats[boat_indx].getPosition());
+                        holding = false;
+                    }
+                    else if (exit_button.getGlobalBounds().contains(mouse_pos)) // Clic en "Salir"
                     {
                         window.close(); // Cierra el juego
                         exit(EXIT_SUCCESS);
                     }
-                    else if (play_button.getGlobalBounds().contains(mouse_pos)) // Clic en "Terminar Partida"
+                    else if (play_button.getGlobalBounds().contains(mouse_pos)) // Clic en "Jugar"
                     {
                         std::cout << "Jugar. Empezando partida..." << std::endl;
                         play_window(window, player);
                     }
-                    for (size_t i = 0; i < comodines.size(); ++i)
+                    for (size_t i = 0; i < comodines.size(); ++i)   // Clic sobre algun comodin
                     {
                         if (comodines[i].getGlobalBounds().contains(mouse_pos))
                         {
                             std::cout << "Comodin " << i << "\n";
                         }
                     }
-                    for (size_t i = 0; i < barcos.size(); ++i)
+                    for (size_t i = 0; i < barcos.size(); ++i)      // Clic sobre algun barco
                     {
                         if (barcos[i].getGlobalBounds().contains(mouse_pos))
                         {
-                            std::cout << "Barco de " << 4 - i << " posiciones\n";    
+                            std::cout << "Barco de " << 5 - i << " posiciones\n";                               
                             barcos[i].setPosition(mouse_pos);
                             boat_indx = i;
                             holding = !holding;
                         }
                     }
-                    for (size_t i = 0; i < proyectiles.size(); ++i) 
+                    for (size_t i = 0; i < proyectiles.size(); ++i) // Clic sobre algun proyectil
                     {
                         if (proyectiles[i].getGlobalBounds().contains(mouse_pos)) 
                         {
@@ -609,6 +671,13 @@ int build_window(sf::RenderWindow& window)
                         }
                     }  
                 }
+            }
+
+            // Rotar el barco
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Right && holding)
+            {
+                horizontal ? barcos[boat_indx].rotate(90) : barcos[boat_indx].rotate(-90);  
+                horizontal = !horizontal;
             }
         }
 
@@ -620,6 +689,7 @@ int build_window(sf::RenderWindow& window)
         window.draw(shot_button);
 
         // Dibujar los items del panel de info
+        for (const auto& empty_boat : empty_boats) window.draw(empty_boat);
         for (const auto& barco : barcos) window.draw(barco);
         for (const auto& comodin : comodines) window.draw(comodin);
         for (const auto& cantidad : cant_comodin) window.draw(cantidad);

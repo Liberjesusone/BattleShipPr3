@@ -974,7 +974,7 @@ namespace Play
 			Boat() noexcept;
 
 			// Constructor parametrico
-			Boat(size_t size, Coordinates first_cell) noexcept;
+			Boat(size_t size, Coordinates first_cell, bool horizontal) noexcept;
 
 			// Functions
 
@@ -1018,6 +1018,18 @@ namespace Play
 			 * @return El bote al cual pertenece la celda, o nullptr si la celda no pertenece a ningun bote de esta flota
 			 */
 			Boat_ptr get_boat_of_cell(Map_cell_ptr cell) const noexcept;
+
+			// Funtions
+
+			/**
+			 * @brief Agrega un bote a la lista de botes
+			 */
+			void add_boat(Boat_ptr bote);
+
+			/**
+			 * @brief Elimina el barco del vector de barcos
+			 */
+			void delete_boat(Boat_ptr bote);
 	};
 
     /**
@@ -1110,6 +1122,9 @@ namespace BotLogic
 			// Constructor por defecto
 			Bot() noexcept;
 
+			// Constructor parametrico
+			Bot(std::string name, Map& mapa, Map& radar) noexcept;
+
 			/**
 			 * @brief Segun los datos del enemigo, obtiene el siguiente moviemiento
 			 * 
@@ -1129,24 +1144,6 @@ namespace BotLogic
 			 * 
 			 * @param mapa al que se le agregaran los botes
 			 */
-			static void create_map(Map& mapa)
-			{
-				mapa.set_boat(mapa.get_ptr_cell(0,0));
-				mapa.set_boat(mapa.get_ptr_cell(0,1));
-				mapa.set_boat(mapa.get_ptr_cell(0,2));
-				mapa.set_boat(mapa.get_ptr_cell(0,3));
-				
-				mapa.set_boat(mapa.get_ptr_cell(1,0));
-				mapa.set_boat(mapa.get_ptr_cell(1,1));
-				mapa.set_boat(mapa.get_ptr_cell(1,2));
-				
-				mapa.set_boat(mapa.get_ptr_cell(2,0));
-				mapa.set_boat(mapa.get_ptr_cell(2,0));
-				
-				mapa.set_boat(mapa.get_ptr_cell(3,0));
-				mapa.set_boat(mapa.get_ptr_cell(3,1));
-
-				mapa.set_boat(mapa.get_ptr_cell(4,0));
-			}
+			static void create_map(Map& mapa);
 	};
 }

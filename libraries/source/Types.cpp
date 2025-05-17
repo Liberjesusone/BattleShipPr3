@@ -530,13 +530,22 @@ namespace Play
 		// Empty
 	}
 
-	Boat::Boat(size_t size, Coordinates first_cell) noexcept
+	Boat::Boat(size_t size, Coordinates first_cell, bool horizontal) noexcept
 	{
 		for (int i = 0; i < size && i < 5; ++i)
 		{
 			Coordinates coord;
-			coord.first = first_cell.first + i;
-			coord.second = first_cell.second;
+			if (horizontal)
+			{
+				coord.first = first_cell.first + i;
+				coord.second = first_cell.second;
+			}
+			else
+			{
+				coord.first = first_cell.first;
+				coord.second = first_cell.second + i;
+			}
+			
 			boat_coordinates.insert(coord);
 		}
 	}
@@ -553,7 +562,7 @@ namespace Play
 
 	size_t Boat::get_size() const noexcept
 	{
-		this->boat_coordinates.size();
+		return this->boat_coordinates.size();
 	}
 
 
@@ -561,7 +570,11 @@ namespace Play
 
 	Fleet::Fleet() noexcept
 	{
-		// Empty
+		//this->boats.push_back();
+		//this->boats.push_back();
+		//this->boats.push_back();
+		//this->boats.push_back();
+
 	}
 
 	std::vector<Boat_ptr>& Fleet::get_boats() noexcept
@@ -581,6 +594,22 @@ namespace Play
 		return nullptr;
 	}
 
+	void Fleet::add_boat(Boat_ptr bote) 
+	{
+		this->boats.push_back(bote);
+	}
+
+	void Fleet::delete_boat(Boat_ptr bote)
+	{
+		for (auto it = boats.begin(); it != boats.end(); ++it) 
+		{
+        	if ((*it)->get_size() == bote->get_size()) 
+			{
+				it = boats.erase(it);
+				break;
+        	}
+    	}
+	}
 
 	// Clase Arsenal
 
@@ -597,9 +626,9 @@ namespace Play
 
 	// Clase Build
 
-	Build::Build() noexcept
+	Build::Build() noexcept : name("Build 1"), flota(), arsenal() 
 	{
-		// Empty
+		// Emoty
 	}
 
 	Fleet& Build::get_fleet() noexcept
@@ -655,6 +684,11 @@ namespace BotLogic
 		// OJO por desarrollar
 	}
 
+	Bot::Bot(std::string name, Map& mapa, Map& radar) noexcept : Player(name, mapa, radar)
+	{
+		// Empty
+	}
+
 	Movement Bot::get_next_move(Player enemy)
 	{
 		// OJO por desarrollar
@@ -681,4 +715,25 @@ namespace BotLogic
 
 		return Movement(selected_cell, item);		
 	}
+	
+	void Bot::create_map(Map& mapa)
+	{
+		mapa.set_boat(mapa.get_ptr_cell(0,0));
+		mapa.set_boat(mapa.get_ptr_cell(0,1));
+		mapa.set_boat(mapa.get_ptr_cell(0,2));
+		mapa.set_boat(mapa.get_ptr_cell(0,3));
+		
+		mapa.set_boat(mapa.get_ptr_cell(1,0));
+		mapa.set_boat(mapa.get_ptr_cell(1,1));
+		mapa.set_boat(mapa.get_ptr_cell(1,2));
+		
+		mapa.set_boat(mapa.get_ptr_cell(2,0));
+		mapa.set_boat(mapa.get_ptr_cell(2,0));
+		
+		mapa.set_boat(mapa.get_ptr_cell(3,0));
+		mapa.set_boat(mapa.get_ptr_cell(3,1));
+
+		mapa.set_boat(mapa.get_ptr_cell(4,0));
+	}
+
 }

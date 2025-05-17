@@ -100,6 +100,6 @@ namespace Painter
             Drawer() noexcept;
 
             // Dibuja un bote en el mapa y cambia los sprites de celdas por botes
-            static void draw(std::vector<sf::Sprite>& sprites_cells, Map& mapa, Boat bote);
+            static void draw(std::vector<sf::Sprite>& sprites_cells, Map& mapa, Boat bote, sf::Texture& texture);
     };
 }

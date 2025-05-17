@@ -104,25 +104,21 @@ namespace Painter
 
     // Clase Drawer
 
-    void Drawer::draw(std::vector<sf::Sprite>& sprites_cells, Map& mapa, Boat bote)
+    void Drawer::draw(std::vector<sf::Sprite>& sprites_cells, Map& mapa, Boat bote, sf::Texture& texture)
     {
         for (auto boat_coord : bote.get_boat_coordinates())
         {
             // coordenada y representa filas, es decir y * cant columas (casillas por filas) = indice 1
             // coordenada x representa columnas es decir x = indice 2
             // el indice en el vector es = indice1 + indice2 
-            size_t vec_indx = boat_coord.second * mapa.get_columns()  + boat_coord.first;
-            std::cout << "Seting cell [" << boat_coord.first << ", " << boat_coord.second << "] as boat\n"; 
-
-            auto scale = sprites_cells[vec_indx].getTexture()->getSize();
-            auto complete_scale = sprites_cells[vec_indx].getScale();
+            size_t vec_indx = boat_coord.second * mapa.get_columns()  + boat_coord.first; 
 
             auto position = sprites_cells[vec_indx].getPosition();
-            sf::Texture& texture = Resources::get_texture(Resources::boat_body_image());
+            auto scale = sprites_cells[vec_indx].getScale();
 
             sprites_cells[vec_indx].setTexture(texture);
             sprites_cells[vec_indx].setPosition(position);
-            sprites_cells[vec_indx].setScale(complete_scale);
+            sprites_cells[vec_indx].setScale(scale);
 
             mapa.set_boat(mapa.get_ptr_cell(boat_coord.first, boat_coord.second));
         }
