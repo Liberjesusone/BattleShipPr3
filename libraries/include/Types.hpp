@@ -754,6 +754,40 @@ namespace Party
 			 * @param col Columna a marcar
 			 */
 			void set_protected(Map_cell_ptr cell) noexcept;
+
+			/**
+			 * @brief Intenta inserta un bote en el mapa, que es basicamente convertir en bote todas las casillas que ocupa el bote
+			 * 
+			 * @param bote a insertar
+			 * 
+			 * @return devulve true si se ha logrado insertar, y false si no se pudo insertar 
+			 */
+			bool insert_boat(Boat_ptr bote) noexcept;
+
+			/**
+			 * @brief Convierte todas las casillas del bote mandado en agua
+			 * 
+			 * @param bote a convertir en agua
+			 */
+			void delete_boat(Boat_ptr bote) noexcept;
+
+			/**
+			 * @brief Crea una safe zone marcada con casillas tipo Failed_cell alrrededor de un barco 
+			 * 
+			 * @param bote al cual hay que rodear con una safe zone
+			 * 
+			 * @note bote tiene que ser un barco previamnete perteneciente al mapa, si no el comportamiento puede ser indefinido
+			 */
+			void create_safe_zone(Boat_ptr bote) noexcept;
+
+			/**
+			 * @brief Revisa si hay colision con el bote recibido y algun otro del mapa actual y si cabe dentro del mapa
+			 * 
+			 * @param bote al cual hay que ver si colisionaria
+			 * 
+			 * @return true si colosiona o se sale del mapa, false si se puede insertar sin colisionar
+			 */
+			bool collides(Boat_ptr bote);
 	};
 }
 
@@ -968,13 +1002,14 @@ namespace Play
 		using Coord_list = std::unordered_set<Coordinates, PairHash>;
 		private:
 			Coord_list boat_coordinates;     // Lista de las coordenadas de las celdas que pertenecen al bote
+			std::string name{""};	
 
 		public: 
 			// Constructor por defecto
 			Boat() noexcept;
 
 			// Constructor parametrico
-			Boat(size_t size, Coordinates first_cell) noexcept;
+			Boat(size_t size, Coordinates first_cell, bool horizontal) noexcept;
 
 			// Functions
 
@@ -992,6 +1027,8 @@ namespace Play
 			Coord_list& get_boat_coordinates() noexcept;
 
 			size_t get_size() const noexcept;
+
+			std::string get_name() const noexcept;
 	};
 
 	/**
@@ -1018,6 +1055,22 @@ namespace Play
 			 * @return El bote al cual pertenece la celda, o nullptr si la celda no pertenece a ningun bote de esta flota
 			 */
 			Boat_ptr get_boat_of_cell(Map_cell_ptr cell) const noexcept;
+
+			// Funtions
+
+			/**
+			 * @brief Agrega un bote a la lista de botes
+			 * 
+			 * @param bote a agregar
+			 */
+			void add_boat(Boat_ptr bote);
+
+			/**
+			 * @brief Elimina el barco del vector de barcos segun su direccion de memoria 
+			 * 
+			 * @param bote a eliminar
+			 */
+			void delete_boat(Boat_ptr bote);
 	};
 
     /**
@@ -1110,6 +1163,9 @@ namespace BotLogic
 			// Constructor por defecto
 			Bot() noexcept;
 
+			// Constructor parametrico
+			Bot(std::string name, Map& mapa, Map& radar) noexcept;
+
 			/**
 			 * @brief Segun los datos del enemigo, obtiene el siguiente moviemiento
 			 * 
@@ -1129,24 +1185,6 @@ namespace BotLogic
 			 * 
 			 * @param mapa al que se le agregaran los botes
 			 */
-			static void create_map(Map& mapa)
-			{
-				mapa.set_boat(mapa.get_ptr_cell(0,0));
-				mapa.set_boat(mapa.get_ptr_cell(0,1));
-				mapa.set_boat(mapa.get_ptr_cell(0,2));
-				mapa.set_boat(mapa.get_ptr_cell(0,3));
-				
-				mapa.set_boat(mapa.get_ptr_cell(1,0));
-				mapa.set_boat(mapa.get_ptr_cell(1,1));
-				mapa.set_boat(mapa.get_ptr_cell(1,2));
-				
-				mapa.set_boat(mapa.get_ptr_cell(2,0));
-				mapa.set_boat(mapa.get_ptr_cell(2,0));
-				
-				mapa.set_boat(mapa.get_ptr_cell(3,0));
-				mapa.set_boat(mapa.get_ptr_cell(3,1));
-
-				mapa.set_boat(mapa.get_ptr_cell(4,0));
-			}
+			static void create_map(Map& mapa);
 	};
 }
