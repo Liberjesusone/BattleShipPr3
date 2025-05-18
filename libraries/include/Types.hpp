@@ -754,6 +754,40 @@ namespace Party
 			 * @param col Columna a marcar
 			 */
 			void set_protected(Map_cell_ptr cell) noexcept;
+
+			/**
+			 * @brief Intenta inserta un bote en el mapa, que es basicamente convertir en bote todas las casillas que ocupa el bote
+			 * 
+			 * @param bote a insertar
+			 * 
+			 * @return devulve true si se ha logrado insertar, y false si no se pudo insertar 
+			 */
+			bool insert_boat(Boat_ptr bote) noexcept;
+
+			/**
+			 * @brief Convierte todas las casillas del bote mandado en agua
+			 * 
+			 * @param bote a convertir en agua
+			 */
+			void delete_boat(Boat_ptr bote) noexcept;
+
+			/**
+			 * @brief Crea una safe zone marcada con casillas tipo Failed_cell alrrededor de un barco 
+			 * 
+			 * @param bote al cual hay que rodear con una safe zone
+			 * 
+			 * @note bote tiene que ser un barco previamnete perteneciente al mapa, si no el comportamiento puede ser indefinido
+			 */
+			void create_safe_zone(Boat_ptr bote) noexcept;
+
+			/**
+			 * @brief Revisa si hay colision con el bote recibido y algun otro del mapa actual y si cabe dentro del mapa
+			 * 
+			 * @param bote al cual hay que ver si colisionaria
+			 * 
+			 * @return true si colosiona o se sale del mapa, false si se puede insertar sin colisionar
+			 */
+			bool collides(Boat_ptr bote);
 	};
 }
 
@@ -968,6 +1002,7 @@ namespace Play
 		using Coord_list = std::unordered_set<Coordinates, PairHash>;
 		private:
 			Coord_list boat_coordinates;     // Lista de las coordenadas de las celdas que pertenecen al bote
+			std::string name{""};	
 
 		public: 
 			// Constructor por defecto
@@ -992,6 +1027,8 @@ namespace Play
 			Coord_list& get_boat_coordinates() noexcept;
 
 			size_t get_size() const noexcept;
+
+			std::string get_name() const noexcept;
 	};
 
 	/**
@@ -1023,11 +1060,15 @@ namespace Play
 
 			/**
 			 * @brief Agrega un bote a la lista de botes
+			 * 
+			 * @param bote a agregar
 			 */
 			void add_boat(Boat_ptr bote);
 
 			/**
-			 * @brief Elimina el barco del vector de barcos
+			 * @brief Elimina el barco del vector de barcos segun su direccion de memoria 
+			 * 
+			 * @param bote a eliminar
 			 */
 			void delete_boat(Boat_ptr bote);
 	};

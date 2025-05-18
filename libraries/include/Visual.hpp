@@ -48,7 +48,6 @@ namespace Painter
             // Nombre de las fuentes
             static std::string titulos_ttf;
 
-
         public:
             // Constructor por defecto
             Resources() noexcept;

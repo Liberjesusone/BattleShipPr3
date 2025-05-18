@@ -19,12 +19,12 @@ namespace Tree
 	int get_random_uniform(int n)
 	{
 		// Crear un generador de n�meros aleatorios
-		std::random_device rd;                 // Semilla aleatoria del hardware
-		std::mt19937 gen(rd());                // Motor de n�meros aleatorios (Mersenne Twister)
+		static std::random_device rd;                 // Semilla aleatoria del hardware
+		static std::mt19937 gen(rd());                // Motor de n�meros aleatorios (Mersenne Twister)
 
-		// Crear una distribuci�n uniforme en el rango [0, n]
-		std::uniform_int_distribution<> dis(0, n);
-		return dis(gen);
+		// Crear una distribuci�n uniforme en el rango [0, max de int]
+		static std::uniform_int_distribution<> dis(0, std::numeric_limits<int>::max());
+		return dis(gen) % (n + 1);
 	}
 	
 	int capacity(int height)
@@ -273,8 +273,6 @@ namespace Party
 
 	Map_cell_ptr Map::get_ptr_cell(size_t col, size_t row) const
 	{
-		//std::cout << "row = " << row << "     col = " << col << "\n";
-		//std::cout << "rows = " << rows << "     colums = " << columns << "\n";
 		if (row >= this->rows || col >= this->columns)	// Si no esta dentro del rango
 		{
 			throw std::runtime_error{"Index out of range in the map"};
@@ -360,6 +358,87 @@ namespace Party
 		auto location = cell->get_location();
 	    matrix[location.first][location.second] = std::make_shared<Protected_cell>(location.first, location.second);
 	}
+
+	bool Map::insert_boat(Boat_ptr bote) noexcept 
+	{
+		if (collides(bote))      // Si colosiona o no cabe en el mapa = false
+		{
+			return false;
+		} 
+
+		for (auto coord : bote->get_boat_coordinates())	// Si no lo insertamos
+		{
+			this->set_boat(this->get_ptr_cell(coord.first, coord.second));
+		}
+		return true;
+	}
+
+	void Map::delete_boat(Boat_ptr bote) noexcept
+	{
+		if (collides(bote)) 
+		{
+			return;
+		}
+
+		for (auto coord : bote->get_boat_coordinates())
+		{
+			this->set_water(this->get_ptr_cell(coord.first, coord.second));
+		}
+	}
+
+	void Map::create_safe_zone(Boat_ptr bote) noexcept
+	{
+		// Retorna 0 si x es negativo, si no retorna x
+		auto put_negative_zero = [](int x) -> size_t 
+		{
+			if (x < 0)
+			{
+				return 0; 
+			}
+			return x;
+		};
+
+
+		for (auto coord : bote->get_boat_coordinates()) // Si no asignamos las casillas safe zone como fail
+		{
+			// Creamos un vector con las celdas circundantes al la celda actual del bote
+			std::vector<Coordinates> surrounding_cells = 		
+			{
+				Coordinates(put_negative_zero(coord.first - 1), coord.second),
+				Coordinates(put_negative_zero(coord.first - 1), coord.second + 1),
+				Coordinates(put_negative_zero(coord.first - 1), put_negative_zero(coord.second - 1)),
+				Coordinates(coord.first, put_negative_zero(coord.second - 1)),
+				Coordinates(coord.first, coord.second + 1),
+				Coordinates(coord.first + 1, put_negative_zero(coord.second - 1)),
+				Coordinates(coord.first + 1, coord.second),
+				Coordinates(coord.first + 1, coord.second + 1),
+			};
+
+			// Las convertimos en fail si no hay un bote alli, si no es ya failed y si no se sale del mapa
+			for (auto sur_coord : surrounding_cells)
+			{
+				if (sur_coord.first < this->columns && sur_coord.second < this->rows &&
+					!this->is_boat(sur_coord.first, sur_coord.second) && !this->is_failed(sur_coord.first, sur_coord.second))
+				{
+					this->set_fail(this->get_ptr_cell(sur_coord.first, sur_coord.second));
+				}
+			}
+		}
+	}
+
+	bool Map::collides(Boat_ptr bote)
+	{
+		for (auto coord : bote->get_boat_coordinates()) // confirmamos que no colisiona y que no se salga del mapa
+		{
+			if (!(coord.first < this->columns && coord.second < this->rows && !this->is_boat(coord.first, coord.second)))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	
 }
 
 namespace Objects
@@ -565,16 +644,17 @@ namespace Play
 		return this->boat_coordinates.size();
 	}
 
+	std::string Boat::get_name() const noexcept
+	{
+		return this->name;
+	}
+
 
 	// Clase Fleet
 
 	Fleet::Fleet() noexcept
 	{
-		//this->boats.push_back();
-		//this->boats.push_back();
-		//this->boats.push_back();
-		//this->boats.push_back();
-
+		// Empty
 	}
 
 	std::vector<Boat_ptr>& Fleet::get_boats() noexcept
@@ -603,7 +683,7 @@ namespace Play
 	{
 		for (auto it = boats.begin(); it != boats.end(); ++it) 
 		{
-        	if ((*it)->get_size() == bote->get_size()) 
+        	if (*it == bote)			// si las dos direcciones de memoria son iguales 
 			{
 				it = boats.erase(it);
 				break;
@@ -611,11 +691,13 @@ namespace Play
     	}
 	}
 
+
+
 	// Clase Arsenal
 
 	Arsenal::Arsenal() noexcept
 	{
-		// Empty
+		// Empty		
 	}
 
 	std::vector<Item_ptr>& Arsenal::get_items() noexcept
@@ -718,22 +800,105 @@ namespace BotLogic
 	
 	void Bot::create_map(Map& mapa)
 	{
-		mapa.set_boat(mapa.get_ptr_cell(0,0));
-		mapa.set_boat(mapa.get_ptr_cell(0,1));
-		mapa.set_boat(mapa.get_ptr_cell(0,2));
-		mapa.set_boat(mapa.get_ptr_cell(0,3));
-		
-		mapa.set_boat(mapa.get_ptr_cell(1,0));
-		mapa.set_boat(mapa.get_ptr_cell(1,1));
-		mapa.set_boat(mapa.get_ptr_cell(1,2));
-		
-		mapa.set_boat(mapa.get_ptr_cell(2,0));
-		mapa.set_boat(mapa.get_ptr_cell(2,0));
-		
-		mapa.set_boat(mapa.get_ptr_cell(3,0));
-		mapa.set_boat(mapa.get_ptr_cell(3,1));
+		size_t rows = mapa.get_rows();
+		size_t columns = mapa.get_columns();
 
-		mapa.set_boat(mapa.get_ptr_cell(4,0));
+		// Crea un bote aleatorio dentro del margen del mapa
+		auto create_random_boat = [rows, columns](Map mapa, size_t size) -> Boat_ptr
+		{
+			// obtenemos una coordenada aleatoria para la primera celda
+			bool horizontal = get_random_uniform(1);
+
+			if (horizontal)		// Segun el size del barco podra ser asigando hacia abajo o derecha desde un segmente reducido del mapa
+			{
+				Coordinates first_cell(get_random_uniform(columns - size), get_random_uniform(rows - 1));
+
+				while (mapa.is_boat(first_cell.first, first_cell.second))	// Seleccionar una celda que no sea bote
+				{
+					first_cell = std::make_pair(get_random_uniform(columns - size), get_random_uniform(rows - 1));
+				}
+
+				Boat_ptr bote = std::make_shared<Boat>(size, first_cell, horizontal);
+				return bote;
+			}
+			else 
+			{
+				Coordinates first_cell(get_random_uniform(columns - 1), get_random_uniform(rows - size));
+
+				while (mapa.is_boat(first_cell.first, first_cell.second))	// Seleccionar una celda que no sea bote
+				{
+					first_cell = std::make_pair(get_random_uniform(columns - 1), get_random_uniform(rows - size));
+				}
+
+				Boat_ptr bote = std::make_shared<Boat>(size, first_cell, horizontal);
+				return bote;
+			}
+		};
+	
+		// si el barco colisiona con una safe zone devuelve true
+		auto collides_with_safezone = [rows, columns](Map mapa, Boat_ptr bote) -> bool
+		{
+			for (auto coord : bote->get_boat_coordinates())
+			{
+				std::cout << "celda {" << coord.first << " " << coord.second << "}\n";
+				if (mapa.is_failed(coord.first, coord.second))
+				{
+					std::cout << "is failed and collides\n";
+					return true;
+				}
+			}
+			return false;
+		};
+
+
+		std::vector<Boat_ptr> botes;
+		botes.resize(5);
+		size_t attempts = 0;
+		bool attempted = false;		  // Si ya intento 10 veces en crear en bote respetando la safe zone sera true
+		for (int i = 0; i < 5; ++i)	  // Creamos 5 botes aleatorios y los asignamos
+		{
+			botes[i] = create_random_boat(mapa, 5 - i);
+			auto is_correct = false;
+			
+			std::cout << "\nBarco " << 5 - i << "\n";
+			if (!attempted)    // Si no ha intentado lo suficiente seguimos buscando un bote que respecte la safe zone
+			{
+				is_correct = !collides_with_safezone(mapa, botes[i]);
+			
+				std::cout << "Choco = " << (is_correct ? "no " : "yes ") << "\n";			
+				is_correct ? is_correct = mapa.insert_boat(botes[i]) : false; 
+			}
+			else 
+			{
+				is_correct = mapa.insert_boat(botes[i]);
+			}
+			
+			std::cout << "was inserted " << (is_correct ? "yes " : "no ") << "\n"; 
+			std::cout << "Primera celda " << botes[i]->get_boat_coordinates().begin()->first << " " << botes[i]->get_boat_coordinates().begin()->second << "\n"; 	
+
+			if (is_correct)
+			{
+				mapa.create_safe_zone(botes[i]);
+				attempts = 0;
+				attempted = false;
+				continue;
+			}
+
+			(attempts == 10 && !attempted)? (attempts = 0, attempted = true) : 	      // intentar ahora sin respectar la safe zone
+			(attempts == 10) ? (--i, attempts = 0, attempted = false) : ++attempts;	  // retroceder al barco anterior o sumar un intento
+			--i;
+		}
+
+		// Convertir de nuevo las casillas failed a agua
+		for (size_t col = 0; col < columns; ++col)
+		{
+			for (size_t row = 0; row < rows; ++row)
+			{
+				if (mapa.is_failed(col, row))
+				{
+					mapa.set_water(mapa.get_ptr_cell(col, row));
+				}
+			}
+		}
 	}
-
 }
