@@ -700,7 +700,8 @@ void build_window(sf::RenderWindow& window)
                     else if (play_button.getGlobalBounds().contains(mouse_pos)) // Clic en "Jugar"
                     {
                         std::cout << "Jugar. Empezando partida..." << std::endl;
-                        play_window(window, player);
+                        Player jugador("Jugador", mapa, radar); 
+                        play_window(window, jugador);
                         return;
                     }
                     for (size_t i = 0; i < comodines.size(); ++i)   // Clic sobre algun comodin
