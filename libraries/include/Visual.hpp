@@ -43,6 +43,7 @@ namespace Painter
             static std::string menu_png;
             static std::string boat_body_png;
             static std::string shield_png;
+            static std::string fire_png;
 
             
             // Nombre de las fuentes
@@ -85,6 +86,7 @@ namespace Painter
             static std::string menu_image();
             static std::string boat_body_image();
             static std::string shield_image();
+            static std::string fire_image();
 
             static std::string titulos_font();
 

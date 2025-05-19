@@ -18,10 +18,11 @@ namespace Painter
     std::string Resources::water_player_png = "water_player.png";
     std::string Resources::radar_png = "water_enemy.png";
     std::string Resources::wood_table_png = "WoodTable.jpg";
-    std::string Resources::failed_png = "fallo.jpg";
+    std::string Resources::failed_png = "failed.png";
     std::string Resources::menu_png = "menu.jpg";
     std::string Resources::boat_body_png = "BoteNavalBody.png";
     std::string Resources::shield_png = "shield.png";
+    std::string Resources::fire_png = "fire.png";
 
     std::string Resources::titulos_ttf = "tittle_font.ttf";
 
@@ -94,6 +95,10 @@ namespace Painter
     std::string Resources::shield_image()
     {
         return Resources::shield_png;
+    }
+    std::string Resources::fire_image()
+    {
+        return Resources::fire_png;
     }
 
     std::string Resources::titulos_font()

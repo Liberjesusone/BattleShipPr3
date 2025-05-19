@@ -840,8 +840,10 @@ namespace BotLogic
 		{
 			for (auto coord : bote->get_boat_coordinates())
 			{
+				std::cout << "celda {" << coord.first << " " << coord.second << "}\n";
 				if (mapa.is_failed(coord.first, coord.second))
 				{
+					std::cout << "is failed and collides\n";
 					return true;
 				}
 			}
@@ -858,16 +860,22 @@ namespace BotLogic
 			botes[i] = create_random_boat(mapa, 5 - i);
 			auto is_correct = false;
 			
+			std::cout << "\nBarco " << 5 - i << "\n";
 			if (!attempted)    // Si no ha intentado lo suficiente seguimos buscando un bote que respecte la safe zone
 			{
-				is_correct = !collides_with_safezone(mapa, botes[i]);		  // vemos si colisiona con la safezone
-				is_correct ? is_correct = mapa.insert_boat(botes[i]) : false; // si no colisiona lo insertamos
+				is_correct = !collides_with_safezone(mapa, botes[i]);
+			
+				std::cout << "Choco = " << (is_correct ? "no " : "yes ") << "\n";			
+				is_correct ? is_correct = mapa.insert_boat(botes[i]) : false; 
 			}
-			else 			  // si ya intento mas de 10 veces, solamente trata de insertarlo
+			else 
 			{
 				is_correct = mapa.insert_boat(botes[i]);
 			}
 			
+			std::cout << "was inserted " << (is_correct ? "yes " : "no ") << "\n"; 
+			std::cout << "Primera celda " << botes[i]->get_boat_coordinates().begin()->first << " " << botes[i]->get_boat_coordinates().begin()->second << "\n"; 	
+
 			if (is_correct)
 			{
 				mapa.create_safe_zone(botes[i]);
