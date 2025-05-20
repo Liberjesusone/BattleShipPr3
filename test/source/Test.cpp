@@ -102,6 +102,58 @@ sf::Texture create_special_button(double CELL_SIZE_X, double CELL_SIZE_Y, sf::Te
     return circle_texture;
 }
 
+void message_window(sf::RenderWindow& window, const std::string& message_str, sf::Color color)
+{
+    sf::Font font = Resources::get_font(Resources::titulos_font());
+
+    //MESSAGE
+    sf::Text message;
+    message.setFont(font);
+    message.setString(message_str);
+    message.setCharacterSize(50); // Ajusta el tamaño para que se vea bien
+    message.setFillColor(sf::Color::White);
+
+    //Centrar el mensaje en la pantalla
+    sf::FloatRect messageRect = message.getLocalBounds();
+    message.setOrigin(messageRect.left + messageRect.width / 2.0f, messageRect.top + messageRect.height / 2.0f);
+    message.setPosition(window.getSize().x / 2.0f, window.getSize().y / 2.0f - 50); 
+
+    //EXIT BUTTON
+    sf::Text exit_button;
+    exit_button.setFont(font);
+    exit_button.setString("Salir");
+    exit_button.setCharacterSize(30);
+    exit_button.setFillColor(sf::Color::White);
+
+    //Posicionar el botón de salir debajo del mensaje y centrado
+    sf::FloatRect buttonRect = exit_button.getLocalBounds();
+    exit_button.setOrigin(buttonRect.left + buttonRect.width / 2.0f, buttonRect.top + buttonRect.height / 2.0f);
+    exit_button.setPosition(window.getSize().x / 2.0f, window.getSize().y / 2.0f + 50); 
+
+    while (window.isOpen())
+    {
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+            sf::Vector2f mouse_pos(static_cast<float>(sf::Mouse::getPosition(window).x),
+                                   static_cast<float>(sf::Mouse::getPosition(window).y));
+
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
+            {
+                if (exit_button.getGlobalBounds().contains(mouse_pos))
+                {
+                    std::cout << "SALIR JUEGO\n";
+                    return; 
+                }
+            }
+        }
+        window.clear(color); 
+        window.draw(message);          
+        window.draw(exit_button);      
+        window.display();              
+    }
+}
+
 void play_window(sf::RenderWindow& window, Player& player) 
 {
     sf::Font font = Resources::get_font(Resources::titulos_font());
@@ -180,10 +232,8 @@ void play_window(sf::RenderWindow& window, Player& player)
     //PANELS PROPERTIES (POSITION AND TEXTURE)
     info_panel.setTexture(&wood_table_texture);
     info_panel.setPosition(0, 0);
-    //radar_panel.setTexture(&radar_texture);
     radar_panel.setFillColor(sf::Color::Black);
     radar_panel.setPosition(INFO_WIDTH, 0);
-    //player_panel.setTexture(&water_texture);
     player_panel.setFillColor(sf::Color::Black);
     player_panel.setPosition(INFO_WIDTH, RADAR_HEIGHT);
 
@@ -236,29 +286,27 @@ void play_window(sf::RenderWindow& window, Player& player)
     bool is_shot_valid = false;
     bool is_shield_valid = false;
     bool is_heal_valid = false;
-
-    //sf::Clock clock;
   
     //PLAY LOOP
     while(window.isOpen())
     {
         sf::Event event;
-        //float current_time = clock.restart().asSeconds();
-        //float fps = 1.0f / current_time;
 
         //PLAY EVENTS LOOP
         while(window.pollEvent(event))
         {
             sf::Vector2f mouse_pos(sf::Mouse::getPosition(window));  
 
-            //LIVES VERIFICATON
+            //LIVES VERIFICATION
             if (enemy_lives == 0)
             {
+                message_window(window, "Congratulations, you have won", sf::Color::Green);
                 std::cout<<"JUADOR GANA\n";
                 return;
             }
             else if (player_lives == 0)
             {
+                message_window(window, "You have lost!", sf::Color::Red);
                 std::cout<<"IA GANA\n";
                 return;
             }
@@ -287,10 +335,25 @@ void play_window(sf::RenderWindow& window, Player& player)
                             x = (i % radar_map.get_columns());
                             y = (i / radar_map.get_columns());        
                     
-                            std::string tipo = radar_map.is_water(x, y) ? "Agua" :
-                                                radar_map.is_boat(x, y) ? "Barco" :
-                                                radar_map.is_failed(x, y) ? "Disparo fallido" :
-                                                   "Barco destruido";
+                            std::string tipo;
+                            
+                            if (radar_map.is_water(x, y)) 
+                            {
+                                tipo = "Agua";
+                            } 
+                            else if (radar_map.is_boat(x, y)) 
+                            {
+                                tipo = "Barco";
+                            }
+                            else if (radar_map.is_failed(x, y)) 
+                            {
+                                tipo = "Disparo fallido";
+                            }
+                            else 
+                            {
+                                tipo = "Barco destruido";
+                            }
+
                             std::cout << "Radar - Casilla clickeada [" << x << ", " << y << "] - " << tipo << std::endl;
                         }
                     }   
@@ -307,19 +370,51 @@ void play_window(sf::RenderWindow& window, Player& player)
                         {                                            
                             x = (i % player_map.get_columns());
                             y = (i / player_map.get_columns());
-                            if (!player_map.is_water(x,y))
+                            
+                            //El comodin SHIELD solo se activa si la casilla es un bote
+                            if (player_map.is_boat(x,y))
                             {
-                                heal_button.setColor(sf::Color(255,255,255,255));
                                 shield_button.setColor(sf::Color(255,255,255,255));
-                                is_heal_valid = true;
                                 is_shield_valid = true;
                             }
-                            std::string tipo = player_map.is_water(x, y) ? "Agua" :
-                                                player_map.is_boat(x, y) ? "Barco" :
-                                                player_map.is_protected(x, y) ? "Protected" :
-                                                player_map.is_failed(x, y) ? "Disparo fallido" :
-                                                "Barco destruido";
-                            std::cout << "Mapa - Casilla clickeada [" << x << ", " << y << "] - " << tipo << std::endl;
+                            else
+                            {
+                                shield_button.setColor(sf::Color(255,255,255,128));   
+                                is_shield_valid = false;
+                            }
+
+                            //El comodin HEAL solo se activa si la casilla es un bote destruido
+                            if (player_map.is_destroyed(x,y))
+                            {
+                                is_shield_valid = true;
+                                shield_button.setColor(sf::Color(255,255,255,255));
+                            }
+                            else
+                            {
+                                heal_button.setColor(sf::Color(255,255,255,128));
+                                is_heal_valid = false;   
+                            }
+                            
+                            std::string tipo;
+                            
+                            if (player_map.is_water(x, y)) 
+                            {
+                                tipo = "Agua";
+                            } 
+                            else if (player_map.is_boat(x, y)) 
+                            {
+                                tipo = "Barco";
+                            }
+                            else if (player_map.is_failed(x, y)) 
+                            {
+                                tipo = "Disparo fallido";
+                            }
+                            else 
+                            {
+                                tipo = "Barco destruido";
+                            }
+
+                            std::cout << "Player - Casilla clickeada [" << x << ", " << y << "] - " << tipo << std::endl;
                         }
                     }  
                 }
@@ -356,7 +451,8 @@ void play_window(sf::RenderWindow& window, Player& player)
                     Map_cell_ptr cell = player_map.get_ptr_cell(x, y);                    
                     is_shield_valid = false;
                     is_heal_valid = false;            
-                       
+                    //disminuir misil   
+
                     shield_button.setColor(sf::Color(255,255,255,128));
                     heal_button.setColor(sf::Color(255,255,255,128));                                         
                         
@@ -372,7 +468,8 @@ void play_window(sf::RenderWindow& window, Player& player)
                     size_t index = y * player_map.get_columns() + x;
                     Map_cell_ptr cell = player_map.get_ptr_cell(x, y);                    
                     is_shield_valid = false;
-                    is_heal_valid = false;            
+                    is_heal_valid = false;  
+                    //disminuir heal          
                        
                     shield_button.setColor(sf::Color(255,255,255,128));
                     heal_button.setColor(sf::Color(255,255,255,128));                                         
@@ -414,6 +511,7 @@ void play_window(sf::RenderWindow& window, Player& player)
         window.display();
     }
 }
+
 
 
 void build_window(sf::RenderWindow& window)
@@ -700,7 +798,8 @@ void build_window(sf::RenderWindow& window)
                     else if (play_button.getGlobalBounds().contains(mouse_pos)) // Clic en "Jugar"
                     {
                         std::cout << "Jugar. Empezando partida..." << std::endl;
-                        play_window(window, player);
+                        Player jugador("Jugador", mapa, radar); 
+                        play_window(window, jugador);
                         return;
                     }
                     for (size_t i = 0; i < comodines.size(); ++i)   // Clic sobre algun comodin
@@ -794,8 +893,9 @@ void menu_window()
     float scaleY = windowHeight / textureHeight;
     back_ground_sprite.setScale(scaleX, scaleY); // Aplicar la escala al sprite
      
-    //MAIN LOOP
     window.setFramerateLimit(60);
+    
+    //MAIN LOOP
     while (window.isOpen()) 
     {
         sf::Event event;
@@ -825,11 +925,6 @@ void menu_window()
                         else if (buttons[i].getString() == "Jugar")
                         {
                             std::cout << "Se presiono Jugar\n";
-                            //build_window(window);
-                            //Map mapa(5, 10);
-                            //Map radar(5, 10);  
-                            //Bot::create_map(radar);     //Creacion del mapa del bot 
-                            //Player player("Jugador", mapa, radar);
                             build_window(window);
                         }
                     }

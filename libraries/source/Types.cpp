@@ -533,7 +533,6 @@ namespace Objects
 
 	void Item::use_on(Player& player, size_t col, size_t row)
 	{
-		// Pude usarce el item casual
 		// OJO por desarrollar
 	}
 
