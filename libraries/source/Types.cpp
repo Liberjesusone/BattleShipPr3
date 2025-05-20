@@ -1,42 +1,5 @@
 #include "Types.hpp"
-
-using namespace Tree;
-using namespace Party;
-using namespace Play;
-using namespace Objects;
-using namespace BotLogic;
-
-std::string num_to_str(int numero)
-{
-	if (numero < 10) 
-		return "0" + std::to_string(numero); // Agrega un cero a la izquierda si el número tiene una cifra
-	else
-		return std::to_string(numero); // Devuelve el número como string si ya tiene dos cifras
-}
-
-namespace Tree
-{
-	int get_random_uniform(int n)
-	{
-		// Crear un generador de n�meros aleatorios
-		static std::random_device rd;                 // Semilla aleatoria del hardware
-		static std::mt19937 gen(rd());                // Motor de n�meros aleatorios (Mersenne Twister)
-
-		// Crear una distribuci�n uniforme en el rango [0, max de int]
-		static std::uniform_int_distribution<> dis(0, std::numeric_limits<int>::max());
-		return dis(gen) % (n + 1);
-	}
-	
-	int capacity(int height)
-	{
-		int cap = 0;
-		for (int i = height - 1; i >= 0; --i)
-		{
-			cap += std::pow(2, i);
-		}
-		return cap;
-	}	
-}
+#include "Structures.hpp"
 
 namespace Party
 {
@@ -450,18 +413,25 @@ namespace Objects
 		// Empty
 	}
 
-	void SingleShot::operator() (Player& player, Map_cell_ptr cell) 
+	void SingleShot::operator() (PlayerPair& players, Map_cell_ptr cell) 
 	{
-		auto mapa = player.get_map();
+		Map_ptr mapa = players.first->get_radar();
 		auto cell_type = cell->get_type();
 
 		if (cell_type == Map_cell::boat_type())
 		{
-			mapa.set_destroy(cell);
+			std::cout << "destroying cell {" << cell->get_location().first << " " << cell->get_location().second << "}\n";
+			mapa->set_destroy(cell);
+		}
+		else if (cell_type == Map_cell::protected_type())
+		{
+			std::cout << "Shoting shild {" << cell->get_location().first << " " << cell->get_location().second << "}\n";
+			mapa->set_boat(cell);
 		}
 		else if (cell_type == Map_cell::water_type())
 		{
-			mapa.set_fail(cell);	
+			std::cout << "Failing cell {" << cell->get_location().first << " " << cell->get_location().second << "}\n";
+			mapa->set_fail(cell);	
 		}
 	}
 
@@ -473,24 +443,27 @@ namespace Objects
 		// Empty	
 	}
 	
-	void ChargedShot::operator() (Player& player, Map_cell_ptr cell)
+	void ChargedShot::operator() (PlayerPair& players, Map_cell_ptr cell)
 	{	
-		Map mapa = player.get_radar();
+		Map_ptr mapa = players.first->get_radar();
 		auto cell_type = cell->get_type();
+		std::cout << "shoting charged\n";
 		
 		if (cell_type == Map_cell::boat_type())		  // Si la celda es un bote
 		{										      // Obtenemos el bote de donde proviene la celda
-			Boat_ptr enemy_boat = player.get_build().get_fleet().get_boat_of_cell(cell);	
-			auto boat_cells_coord = enemy_boat->get_boat_coordinates();  // Obtenemos la lista de coordenadas de las demas celdas del bote
-			for (auto coordinates : boat_cells_coord)					 // Destruimos cada una de ellas
+			Boat_ptr enemy_boat = players.second->get_build().get_fleet().get_boat_of_cell(cell);	
+			for (auto coord : enemy_boat->get_boat_coordinates())					 // Destruimos cada una de ellas
 			{
-				auto cell = mapa.get_ptr_cell(coordinates.first, coordinates.second);
-				mapa.set_destroy(cell);
+				auto boat_cell = mapa->get_ptr_cell(coord.first, coord.second);
+				std::cout << "Charged destroyin cell {" << boat_cell->get_location().first << " " << boat_cell->get_location().second << "}\n";
+				
+				boat_cell->get_type() == Map_cell::protected_type() ? mapa->set_boat(boat_cell) : mapa->set_destroy(boat_cell);
 			}
 		}
 		else if (cell_type == Map_cell::water_type()) // Si la celda es agua 
 		{
-			mapa.set_fail(cell);	
+			std::cout << "Charged Failing cell {" << cell->get_location().first << " " << cell->get_location().second << "}\n";
+			mapa->set_fail(cell);	
 		}											  // Si no es ninguna de las anteriores no pasa nada
 	}
 
@@ -502,11 +475,36 @@ namespace Objects
 		// Empty
 	}
 
-	void HealCell::operator() (Player& player, Map_cell_ptr cell)
+	void HealCell::operator() (PlayerPair& players, Map_cell_ptr cell)
 	{
-		auto mapa = player.get_map();
-		mapa.set_boat(cell);
+		Map_ptr mapa = players.first->get_map();
+		std::cout << "Healing cell {" << cell->get_location().first << " " << cell->get_location().second << "}\n";
+		if (cell->get_type() == Map_cell::destroyed_type())
+		{
+			std::cout << "was Heal\n";
+			mapa->set_boat(cell);
+		}
 	}
+
+
+	// Clase ProtectCell
+	
+	ProtectCell::ProtectCell() noexcept
+	{
+		// Empty
+	}
+
+	void ProtectCell::operator() (PlayerPair& players, Map_cell_ptr cell)
+	{
+		Map_ptr mapa = players.first->get_map();
+		std::cout << "Protecting cell {" << cell->get_location().first << " " << cell->get_location().second << "}\n";
+		if (cell->get_type() == Map_cell::boat_type())
+		{
+			std::cout << "was protected\n";
+			mapa->set_protected(cell);
+		}
+	}
+
 
 		
 	// Clase Item
@@ -531,7 +529,7 @@ namespace Objects
 		return 'I';
 	}
 
-	void Item::use_on(Player& player, size_t col, size_t row)
+	void Item::use_on(PlayerPair& players, size_t col, size_t row)
 	{
 		// Pude usarce el item casual
 		// OJO por desarrollar
@@ -697,7 +695,11 @@ namespace Play
 
 	Arsenal::Arsenal() noexcept
 	{
-		// Empty		
+		// se cargan por defecto los items
+		this->items.push_back(std::make_shared<Rocket<SingleShot>>(1000, "Missile"));
+		this->items.push_back(std::make_shared<Rocket<ChargedShot>>(3, "Torpedo"));
+		this->items.push_back(std::make_shared<Comodin<HealCell>>(3, "Corazon"));
+		this->items.push_back(std::make_shared<Comodin<ProtectCell>>(3, "Shild"));
 	}
 
 	std::vector<Item_ptr>& Arsenal::get_items() noexcept
@@ -710,7 +712,7 @@ namespace Play
 
 	Build::Build() noexcept : name("Build 1"), flota(), arsenal() 
 	{
-		// Emoty
+		// Empty
 	}
 
 	Fleet& Build::get_fleet() noexcept
@@ -736,17 +738,17 @@ namespace Play
 		// Empty
 	}
 
-	Player::Player(std::string name, Map& mapa, Map& radar) noexcept : name(name), mapa(mapa), radar(radar)
+	Player::Player(std::string name, Map_ptr mapa, Map_ptr radar) noexcept : name(name), mapa(mapa), radar(radar)
 	{
 		// Emtpy
 	}
 
-	Map& Player::get_radar() noexcept
+	Map_ptr Player::get_radar() noexcept
 	{
 		return this->radar;
 	}
 	
-	Map& Player::get_map() noexcept
+	Map_ptr Player::get_map() noexcept
 	{
 		return this->mapa;
 	}
@@ -766,9 +768,9 @@ namespace BotLogic
 		// OJO por desarrollar
 	}
 
-	Bot::Bot(std::string name, Map& mapa, Map& radar) noexcept : Player(name, mapa, radar)
+	Bot::Bot(std::string name, Map_ptr mapa, Map_ptr radar) noexcept : Player(name, mapa, radar)
 	{
-		// Empty
+		this->create_map(mapa);	 // Mandamos a crear el mapa
 	}
 
 	Movement Bot::get_next_move(Player enemy)
@@ -778,33 +780,33 @@ namespace BotLogic
 
 	Movement Bot::get_random_move()
 	{                      
-		auto items = this->get_build().get_arsenal().get_items();			 
+		auto items = this->get_build().get_arsenal().get_items();
 		Item_ptr item = items[get_random_uniform(items.size()-1)];           // Obtenemos un item aleatorio dentro del arsenal 
 
-		std::shared_ptr<Map> selected_map;
+		Map_ptr selected_map;
 		if (item->get_type() == Item::comodin_type())															
 		{
-			selected_map = std::make_shared<Map>(this->get_map());				// si es comodin lo aplicamos en el mapa nuestro 
+			selected_map = this->get_map();				// si es comodin lo aplicamos en el mapa nuestro 
 		}
 		else 
 		{
-			selected_map = std::make_shared<Map>(this->get_radar());				// si es rocket lo aplicamos en el mapa enemigo
+			selected_map = this->get_radar();			// si es rocket lo aplicamos en el mapa enemigo
 		}
 		
 		Coordinates location{selected_map->get_columns() - 1, selected_map->get_rows() - 1};   // Obtenemos la cantidad de filas y columnas
 																	          // Obtenemos una celda aleatoria dentro del rango del radar
 		Coordinates selected_cell{get_random_uniform(location.first), get_random_uniform(location.second)}; 
-
+		std::cout << "\nobteniendo el moviemiento aleatorio\n";
 		return Movement(selected_cell, item);		
 	}
 	
-	void Bot::create_map(Map& mapa)
+	void Bot::create_map(Map_ptr mapa)
 	{
-		size_t rows = mapa.get_rows();
-		size_t columns = mapa.get_columns();
+		size_t rows = mapa->get_rows();
+		size_t columns = mapa->get_columns();
 
 		// Crea un bote aleatorio dentro del margen del mapa
-		auto create_random_boat = [rows, columns](Map mapa, size_t size) -> Boat_ptr
+		auto create_random_boat = [rows, columns](Map_ptr mapa, size_t size) -> Boat_ptr
 		{
 			// obtenemos una coordenada aleatoria para la primera celda
 			bool horizontal = get_random_uniform(1);
@@ -813,7 +815,7 @@ namespace BotLogic
 			{
 				Coordinates first_cell(get_random_uniform(columns - size), get_random_uniform(rows - 1));
 
-				while (mapa.is_boat(first_cell.first, first_cell.second))	// Seleccionar una celda que no sea bote
+				while (mapa->is_boat(first_cell.first, first_cell.second))	// Seleccionar una celda que no sea bote
 				{
 					first_cell = std::make_pair(get_random_uniform(columns - size), get_random_uniform(rows - 1));
 				}
@@ -825,7 +827,7 @@ namespace BotLogic
 			{
 				Coordinates first_cell(get_random_uniform(columns - 1), get_random_uniform(rows - size));
 
-				while (mapa.is_boat(first_cell.first, first_cell.second))	// Seleccionar una celda que no sea bote
+				while (mapa->is_boat(first_cell.first, first_cell.second))	// Seleccionar una celda que no sea bote
 				{
 					first_cell = std::make_pair(get_random_uniform(columns - 1), get_random_uniform(rows - size));
 				}
@@ -836,14 +838,12 @@ namespace BotLogic
 		};
 	
 		// si el barco colisiona con una safe zone devuelve true
-		auto collides_with_safezone = [rows, columns](Map mapa, Boat_ptr bote) -> bool
+		auto collides_with_safezone = [rows, columns](Map_ptr mapa, Boat_ptr bote) -> bool
 		{
 			for (auto coord : bote->get_boat_coordinates())
 			{
-				std::cout << "celda {" << coord.first << " " << coord.second << "}\n";
-				if (mapa.is_failed(coord.first, coord.second))
+				if (mapa->is_failed(coord.first, coord.second))
 				{
-					std::cout << "is failed and collides\n";
 					return true;
 				}
 			}
@@ -860,25 +860,20 @@ namespace BotLogic
 			botes[i] = create_random_boat(mapa, 5 - i);
 			auto is_correct = false;
 			
-			std::cout << "\nBarco " << 5 - i << "\n";
 			if (!attempted)    // Si no ha intentado lo suficiente seguimos buscando un bote que respecte la safe zone
 			{
 				is_correct = !collides_with_safezone(mapa, botes[i]);
-			
-				std::cout << "Choco = " << (is_correct ? "no " : "yes ") << "\n";			
-				is_correct ? is_correct = mapa.insert_boat(botes[i]) : false; 
+				is_correct ? is_correct = mapa->insert_boat(botes[i]) : false; 
 			}
 			else 
 			{
-				is_correct = mapa.insert_boat(botes[i]);
+				is_correct = mapa->insert_boat(botes[i]);
 			}
 			
-			std::cout << "was inserted " << (is_correct ? "yes " : "no ") << "\n"; 
-			std::cout << "Primera celda " << botes[i]->get_boat_coordinates().begin()->first << " " << botes[i]->get_boat_coordinates().begin()->second << "\n"; 	
 
 			if (is_correct)
 			{
-				mapa.create_safe_zone(botes[i]);
+				mapa->create_safe_zone(botes[i]);
 				attempts = 0;
 				attempted = false;
 				continue;
@@ -888,17 +883,34 @@ namespace BotLogic
 			(attempts == 10) ? (--i, attempts = 0, attempted = false) : ++attempts;	  // retroceder al barco anterior o sumar un intento
 			--i;
 		}
+		
+		for (auto boat : botes)			// Agregamos la lista de botes al bot
+		{
+			this->get_build().get_fleet().add_boat(boat);
+		}
 
 		// Convertir de nuevo las casillas failed a agua
 		for (size_t col = 0; col < columns; ++col)
 		{
 			for (size_t row = 0; row < rows; ++row)
 			{
-				if (mapa.is_failed(col, row))
+				if (mapa->is_failed(col, row))
 				{
-					mapa.set_water(mapa.get_ptr_cell(col, row));
+					mapa->set_water(mapa->get_ptr_cell(col, row));
 				}
 			}
 		}
+	}
+
+	bool Bot::play(Player_ptr player)
+	{
+		auto movement = this->get_random_move();
+		auto cell = movement.first;
+		auto item = movement.second;
+
+		std::cout << "jugo en la casilla {" << cell.first << " " << cell.second << "} con un " << item->get_type() << "\n";
+		PlayerPair pair = std::make_pair(std::make_shared<Player>(*this), player);
+		item->use_on(pair, cell.first, cell.second);
+		return item->get_type() == Item::comodin_type();	
 	}
 }

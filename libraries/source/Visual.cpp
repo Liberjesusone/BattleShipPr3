@@ -1,5 +1,5 @@
 #include "Visual.hpp"
-
+#include "Types.hpp"
 
 namespace Painter
 {
@@ -109,14 +109,14 @@ namespace Painter
 
     // Clase Drawer
 
-    void Drawer::draw(std::vector<sf::Sprite>& sprites_cells, Map& mapa, Boat bote, sf::Texture& texture)
+    void Drawer::draw(std::vector<sf::Sprite>& sprites_cells, Map_ptr mapa, Boat bote, sf::Texture& texture)
     {
         for (auto boat_coord : bote.get_boat_coordinates())
         {
             // coordenada y representa filas, es decir y * cant columas (casillas por filas) = indice 1
             // coordenada x representa columnas es decir x = indice 2
             // el indice en el vector es = indice1 + indice2 
-            size_t vec_indx = boat_coord.second * mapa.get_columns()  + boat_coord.first; 
+            size_t vec_indx = boat_coord.second * mapa->get_columns()  + boat_coord.first; 
 
             auto position = sprites_cells[vec_indx].getPosition();
             auto scale = sprites_cells[vec_indx].getScale();
@@ -125,7 +125,49 @@ namespace Painter
             sprites_cells[vec_indx].setPosition(position);
             sprites_cells[vec_indx].setScale(scale);
 
-            mapa.set_boat(mapa.get_ptr_cell(boat_coord.first, boat_coord.second));
+            mapa->set_boat(mapa->get_ptr_cell(boat_coord.first, boat_coord.second));
         }
     }
+
+    void Drawer::draw(std::vector<sf::Sprite>& sprites_cells, Map_ptr mapa, bool isRadar)
+    {
+        isRadar = false;
+        for (int y = 0; y < mapa->get_rows(); ++y)
+        {
+            for (int x = 0; x < mapa->get_columns(); ++x)
+            {
+                size_t vec_indx = y * mapa->get_columns() + x;
+                auto position = sprites_cells[vec_indx].getPosition();
+                auto scale = sprites_cells[vec_indx].getScale();
+
+                if (mapa->is_boat(x, y) && !isRadar)
+                {
+                    sprites_cells[vec_indx].setTexture(Resources::get_texture(Resources::boat_body_image()));
+                }
+                else if (mapa->is_water(x, y))
+                {
+                    sprites_cells[vec_indx].setTexture(Resources::get_texture( (isRadar ? Resources::radar_image() : Resources::water_player_image()) ) );
+                }
+                else if (mapa->is_failed(x, y))
+                {
+                    sprites_cells[vec_indx].setTexture(Resources::get_texture(Resources::failed_image()));
+                }
+                else if (mapa->is_destroyed(x, y))
+                {
+                    sprites_cells[vec_indx].setTexture(Resources::get_texture(Resources::fire_image()));
+                }
+                else if (!isRadar)
+                {
+                    sprites_cells[vec_indx].setTexture(Resources::get_texture(Resources::shield_image()));
+                }
+
+
+                sprites_cells[vec_indx].setScale(scale);
+                sprites_cells[vec_indx].setPosition(position);
+            }
+        }
+
+    }
+
+
 }
