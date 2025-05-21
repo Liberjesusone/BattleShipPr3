@@ -19,14 +19,14 @@ namespace Tree
 	template <typename T>
 	class Node
 	{
-        using NodePtr = std::shared_ptr<Node<T>>;	
+        using Node_ptr = std::shared_ptr<Node<T>>;	
 
         public: 
             T data;
-            NodePtr up{nullptr};
-            NodePtr down{nullptr};
-            NodePtr right{nullptr};
-            NodePtr left{nullptr};
+            Node_ptr up{nullptr};
+            Node_ptr down{nullptr};
+            Node_ptr right{nullptr};
+            Node_ptr left{nullptr};
 
             //Constructor por defecto
             Node() : left(nullptr), right(nullptr), down(nullptr) {}
@@ -39,9 +39,9 @@ namespace Tree
             T& get_ref_key() { return this->data; }
 
             //Retorna una lista con los hijos asi apunten a nullptr, en el orden up, down, right, left
-            std::list<NodePtr> childrens() 
+            std::list<Node_ptr> childrens() 
             {
-                std::list<NodePtr> children_list;
+                std::list<Node_ptr> children_list;
                 children_list.push_back(up);
                 children_list.push_back(down);
                 children_list.push_back(right);

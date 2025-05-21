@@ -157,6 +157,56 @@ void message_window(sf::RenderWindow& window, const std::string& message_str, sf
         window.display();              
     }
 }
+    
+//Actualiza la lista de los barcos del bot
+void update_list_ships(Bot& bot, Map_ptr& radar_map, std::vector<sf::Text>& boat_list)
+{
+    auto ships = bot.get_build().get_fleet().get_boats();
+    
+    for(int i = 0; i < ships.size(); ++i)
+    {
+        if (ships[i]->get_distruction_per(radar_map) >= 100.f)
+        {
+            if (i == 0)
+            {
+                boat_list[4].setFillColor(sf::Color(255,255,255,128));
+            }
+            else if(i == 1)
+            {
+                boat_list[3].setFillColor(sf::Color(255,255,255,128));
+            }
+            else if(i == 2)
+            {
+                boat_list[2].setFillColor(sf::Color(255,255,255,128));
+            }
+            else if(i == 3)
+            {
+                boat_list[1].setFillColor(sf::Color(255,255,255,128));
+            }
+            else if(i == 4)
+            {
+                boat_list[0].setFillColor(sf::Color(255,255,255,128));
+            }
+        }
+    }
+}
+
+//Retorna la cantidad de barcos que tienen un 100% de destrucción
+int winner_verification(Player& player, Map_ptr& map)
+{
+    auto ships = player.get_build().get_fleet().get_boats();
+    int result = 0;
+    
+    for(int i = 0; i < ships.size(); ++i)
+    {
+        if (ships[i]->get_distruction_per(map) == 100.f)
+        {
+            ++result;
+        }
+    }
+    return result;
+}
+
 
 void play_window(sf::RenderWindow& window, Player& player, Bot& bot) 
 {
@@ -230,11 +280,6 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
         for (int x = 0; x < radar_map->get_columns(); ++x)
         {
             sf::Sprite enemy_sprite;
-            if (radar_map->is_boat(x,y))
-            {
-                bot.increase_lives();
-            }
-            
             enemy_sprite.setTexture(water_enemy_texture);    
             enemy_sprite.setScale(CELL_SIZE_X / enemy_sprite.getTexture()->getSize().x, CELL_SIZE_Y / enemy_sprite.getTexture()->getSize().y);
             enemy_sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, y * CELL_SIZE_Y); // Posición relativa al radar_panel
@@ -251,7 +296,6 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
             if (player_map->is_boat(x,y))
             {
                 player_sprite.setTexture(Resources::get_texture(Resources::boat_body_image()));
-                player.increase_lives();
             }
             else
             {
@@ -270,6 +314,8 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
     bool is_shot_valid = false;
     bool is_shield_valid = false;
     bool is_heal_valid = false;
+    bool player_won = false;
+    bool bot_won = false;
 
     //IA MESSAGE
     sf::Text bot_shot_message("IA DISPARA", font, 30);
@@ -280,7 +326,7 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
     bot_comodin_message.setPosition(shot_button.getPosition().x, shot_button.getPosition().y + shot_button.getGlobalBounds().height + 50);
 
     //BOAT LIST 
-    std::vector<sf::Text> boat_messages;
+    std::vector<sf::Text> boat_list;
     for (int i = 0; i < 5; ++i) 
     {
         sf::Text boat_text;
@@ -289,8 +335,11 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
         boat_text.setCharacterSize(30); 
         boat_text.setFillColor(sf::Color::White);
         boat_text.setPosition(exit_button.getPosition().x, exit_button.getPosition().y + exit_button.getGlobalBounds().height + 50 + (i * 40));
-        boat_messages.push_back(boat_text);
+        boat_list.push_back(boat_text);
     } 
+
+    //BOT SHIPS
+    auto bot_ships = bot.get_build().get_fleet().get_boats();
   
     //PLAY LOOP
     while(window.isOpen())
@@ -301,17 +350,14 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
         while(window.pollEvent(event))
         {
             sf::Vector2f mouse_pos(sf::Mouse::getPosition(window));  
-
-            //LIVES VERIFICATION
-            std::cout<<"VIDA IA: "<<bot.get_lives()<<std::endl;
-            std::cout<<"VIDA JUGADOR: "<<player.get_lives()<<std::endl;
-            if (bot.get_lives() == 0)
+            
+            if (player_won)
             {
                 message_window(window, "Congratulations, you have won", sf::Color::Green);
                 std::cout<<"JUGADOR GANA\n";
                 return;
             }
-            else if (player.get_lives() == 0)
+            else if (bot_won)
             {
                 message_window(window, "You have lost!", sf::Color::Red);
                 std::cout<<"IA GANA\n";
@@ -340,7 +386,7 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
                             x = (i % radar_map->get_columns());
                             y = (i / radar_map->get_columns());  
 
-                            if (radar_map->is_boat(x,y) || radar_map->is_water(x,y))
+                            if (radar_map->is_boat(x,y) || radar_map->is_water(x,y) || radar_map->is_protected(x,y))
                             {
                                 shot_button.setColor(sf::Color(255,255,255,255));
                                 is_shot_valid = true;
@@ -407,8 +453,8 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
                             //El comodin HEAL solo se activa si la casilla es un bote destruido
                             if (player_map->is_destroyed(x,y))
                             {
-                                is_shield_valid = true;
-                                shield_button.setColor(sf::Color(255,255,255,255));
+                                is_heal_valid = true;
+                                heal_button.setColor(sf::Color(255,255,255,255));
                             }
                             else
                             {
@@ -445,12 +491,9 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
                     is_shot_valid = false;
                     size_t index = y * radar_map->get_columns() + x;
                     Map_cell_ptr cell = radar_map->get_ptr_cell(x, y);                    
-
                     shot_button.setColor(sf::Color(255,255,255,128));
                     
                     player.get_build().get_arsenal().get_items()[0]->use_on(player_pair, x, y);   
-
-                    //VERIFICAR LISTA
                     
                     if (radar_map->is_destroyed(x, y))
                     {
@@ -460,8 +503,15 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
                     {
                         enemy_cells[index].setTexture(Resources::get_texture(Resources::failed_image()));
                     }
-                    
                     enemy_cells[index].setScale(CELL_SIZE_X / enemy_cells[index].getTexture()->getSize().x, CELL_SIZE_Y / enemy_cells[index].getTexture()->getSize().y);
+
+                    //Verificando si el jugador ganó
+                    update_list_ships(bot, radar_map, boat_list); 
+                    if (bot.get_build().get_fleet().get_boats().size() == winner_verification(bot, radar_map)+1)
+                    {
+                        player_won = true;
+                        break;
+                    }
 
                     // Ejecutamos el bot
                     bool was_comodin = bot.play(std::make_shared<Player>(player));      // jugamos y vemos que tipo fue
@@ -565,6 +615,13 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
                         bot_shot_message.setFillColor(sf::Color(255,255,255,255));
                     }
                 }
+                //Verificando si el bot ganó
+                update_list_ships(bot, radar_map, boat_list); 
+                if (player.get_build().get_fleet().get_boats().size() == winner_verification(player, player_map)+1)
+                {
+                    bot_won = true;
+                    break;
+                }
             }
         }
 
@@ -590,7 +647,7 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
           window.draw(casilla);  
         } 
 
-        for (const auto& boat_text : boat_messages) 
+        for (const auto& boat_text : boat_list) 
         {
            window.draw(boat_text);
         }
@@ -598,8 +655,6 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
         window.display();
     }
 }
-
-
 
 void build_window(sf::RenderWindow& window)
 {
