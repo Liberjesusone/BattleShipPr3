@@ -19,14 +19,14 @@ namespace Tree
 	template <typename T>
 	class Node
 	{
-        using NodePtr = std::shared_ptr<Node<T>>;	
+        using Node_ptr = std::shared_ptr<Node<T>>;	
 
         public: 
             T data;
-            NodePtr up{nullptr};
-            NodePtr down{nullptr};
-            NodePtr right{nullptr};
-            NodePtr left{nullptr};
+            Node_ptr up{nullptr};
+            Node_ptr down{nullptr};
+            Node_ptr right{nullptr};
+            Node_ptr left{nullptr};
 
             //Constructor por defecto
             Node() : left(nullptr), right(nullptr), down(nullptr) {}
@@ -38,10 +38,36 @@ namespace Tree
             T get_key() { return this->data; }
             T& get_ref_key() { return this->data; }
 
+			Node_ptr get_highest_key()
+			{
+				Node_ptr best_node = std::make_shared<Node>(*this); // Nodo con el valor más alto
+				size_t max_probability = std::get<1>(this->data);   // Mayor número de veces que un barco puede pasar
+
+				std::stack<Node_ptr> stack;
+				stack.push(std::make_shared<Node>(*this));	
+				// Revisamos todos los hijos del nodo actual
+				while (!stack.empty())
+				{
+					Node_ptr node = stack.top();
+					stack.pop();
+					for (const auto& child : node->childrens()) 
+					{
+						if (child != nullptr && std::get<1>(child->data) > max_probability && std::get<2>(child->data)) // Ajustamos el max
+						{
+							max_probability = std::get<1>(child->data);
+							best_node = child;
+						}
+						stack.push(child);	// Sumamos a su hijo para que en el llamado recursivo se vean tmb sus hijos
+					}	
+				}
+
+				return best_node;
+			}
+
             //Retorna una lista con los hijos asi apunten a nullptr, en el orden up, down, right, left
-            std::list<NodePtr> childrens() 
+            std::list<Node_ptr> childrens() 
             {
-                std::list<NodePtr> children_list;
+                std::list<Node_ptr> children_list;
                 children_list.push_back(up);
                 children_list.push_back(down);
                 children_list.push_back(right);
@@ -62,7 +88,7 @@ namespace Tree
 	 * @return int Cantidad de nodos en el arbol, si el ptr es null retorna 0
 	 */
 	template <typename Tree>
-	int cardinality(Tree* root) 
+	int cardinality(std::shared_ptr<Tree> root) 
 	{
 		if (root == nullptr) return 0;
 		
@@ -90,7 +116,7 @@ namespace Tree
 	 * @return int Altura del arbol
 	 */
 	template <typename Tree>
-	int heigth(Tree* root) 
+	int heigth(std::shared_ptr<Tree> root) 
 	{
 		if (root == nullptr) return -1;
 		
@@ -111,7 +137,7 @@ namespace Tree
 	 * @return int Cantidad de nodos minima hasta el primer espacio libre en el arbol
 	 */
 	template <typename Tree>
-	int min_heigth(Tree* root)  
+	int min_heigth(std::shared_ptr<Tree> root)  
 	{
 		if (root == nullptr) return -1;
 
@@ -147,7 +173,7 @@ namespace Tree
 	 * @return std::list<int> Lista con el numero de hijo, que se debe tomar para llegar a la ruta mas corta
 	 */
 	template <typename Tree>
-	std::list<int> min_route(Tree* root) 
+	std::list<int> min_route(std::shared_ptr<Tree> root) 
 	{
 		if (root == nullptr) return {1};
 
@@ -198,7 +224,7 @@ namespace Tree
 	 * @note si el arbol es vacio se crea el primer nodo
 	 */
 	template <typename Tree, typename T>
-	void insert_min(Tree* root, T elem)  
+	void insert_min(std::shared_ptr<Tree> root, T elem)  
 	{
 		if (root == nullptr) // Si el arbol esta vacio se crea el primer nodo
 		{
@@ -266,7 +292,7 @@ namespace Tree
 	 * @note si el arbol es vacio no hace nada
 	 */
 	template <typename Tree, typename Action>
-	void for_all(Tree* root, Action&& action)	
+	void for_all(std::shared_ptr<Tree> root, Action&& action)	
 	{
 		if (root == nullptr) return;
 		action(root->dato);
@@ -280,7 +306,7 @@ namespace Tree
 	 * @brief Recorre el arbol en level traverse y aplica una accion a cada nodo
 	 */
 	template <typename Tree, typename Action>
-	void level_traverse(Tree* root, Action&& action)  
+	void level_traverse(std::shared_ptr<Tree> root, Action&& action)  
 	{
 		std::queue<Tree*> myQueue;
 		myQueue.push(root);

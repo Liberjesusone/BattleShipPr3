@@ -179,6 +179,14 @@ namespace Party
 		}
 	}
 
+	bool Map::is_main(size_t col, size_t row)
+	{
+		Map_cell_ptr cell = get_ptr_cell(col, row);
+		bool is_main = !this->is_boat(col, row) && !this->is_destroyed(col, row) && !this->is_failed(col, row) &&
+					   !this->is_water(col, row) && !this->is_protected(col, row);
+		return is_main;
+	}
+
 	bool Map::is_water(Map_cell& cell)
 	{
 		return dynamic_cast<Water_cell*>(&cell) != nullptr;
@@ -292,6 +300,12 @@ namespace Party
 		return get_ptr_cell(location.first, ++location.second);
 	}
 
+	void Map::set_main(Map_cell_ptr cell) noexcept
+	{
+	    auto location = cell->get_location();
+	    matrix[location.first][location.second] = std::make_shared<Map_cell>(location.first, location.second);
+	}
+	
 	void Map::set_water(Map_cell_ptr cell) noexcept
 	{
 	    auto location = cell->get_location();
@@ -385,6 +399,40 @@ namespace Party
 				{
 					this->set_fail(this->get_ptr_cell(sur_coord.first, sur_coord.second));
 				}
+			}
+		}
+	}
+
+	void Map::create_safe_zone(Coordinates coord) noexcept
+	{
+		// Retorna 0 si x es negativo, si no retorna x
+		auto put_negative_zero = [](int x) -> size_t 
+		{
+			if (x < 0)
+			{
+				return 0; 
+			}
+			return x;
+		};
+
+		std::vector<Coordinates> surrounding_cells = 		
+		{
+			Coordinates(put_negative_zero(coord.first - 1), coord.second),
+			Coordinates(put_negative_zero(coord.first - 1), coord.second + 1),
+			Coordinates(put_negative_zero(coord.first - 1), put_negative_zero(coord.second - 1)),
+			Coordinates(coord.first, put_negative_zero(coord.second - 1)),
+			Coordinates(coord.first, coord.second + 1),
+			Coordinates(coord.first + 1, put_negative_zero(coord.second - 1)),
+			Coordinates(coord.first + 1, coord.second),
+			Coordinates(coord.first + 1, coord.second + 1),
+		};
+
+		for (auto sur_coord : surrounding_cells)
+		{
+			if (sur_coord.first < this->columns && sur_coord.second < this->rows &&
+				!this->is_boat(sur_coord.first, sur_coord.second) && !this->is_failed(sur_coord.first, sur_coord.second))
+			{
+				this->set_main(this->get_ptr_cell(sur_coord.first, sur_coord.second));
 			}
 		}
 	}
@@ -632,6 +680,19 @@ namespace Play
 		return this->boat_coordinates.contains(cell->get_location());
 	}
 
+	float Boat::get_distruction_per(Map_ptr mapa)
+	{
+		size_t destroyed_cells = 0;
+		for (auto coord : this->get_boat_coordinates())
+		{
+			if (mapa->is_destroyed(coord.first, coord.second))
+			{
+				++destroyed_cells;
+			}
+		}
+		return this->distruction_per = (100 * static_cast<float>(destroyed_cells)) / static_cast<float>(this->get_size());
+	}
+	
 	Boat::Coord_list& Boat::get_boat_coordinates() noexcept
 	{
 		return this->boat_coordinates;
@@ -775,7 +836,7 @@ namespace BotLogic
 
 	Movement Bot::get_next_move(Player enemy)
 	{
-		// OJO por desarrollar
+		
 	}
 
 	Movement Bot::get_random_move()
@@ -912,5 +973,299 @@ namespace BotLogic
 		PlayerPair pair = std::make_pair(std::make_shared<Player>(*this), player);
 		item->use_on(pair, cell.first, cell.second);
 		return item->get_type() == Item::comodin_type();	
+	}
+
+	void Bot::build_target_boat(Coordinates cell)
+	{
+
+
+	}
+
+	bool Bot::make_movement(Player_ptr player)
+	{	
+		PlayerPair player_pair = std::make_pair(std::make_shared<Player>(*this), player);
+		Map_ptr player_map = player->get_map();
+		Map_ptr bot_map = player->get_radar();
+
+		Item_ptr missile = this->get_build().get_arsenal().get_items()[0];
+		Item_ptr charged_missile = this->get_build().get_arsenal().get_items()[1];
+		Item_ptr heal = this->get_build().get_arsenal().get_items()[2];
+		Item_ptr shild = this->get_build().get_arsenal().get_items()[3];
+
+		std::vector<Boat_ptr>& bot_boats = this->get_build().get_fleet().get_boats();
+
+		auto get_relative_position = [](Coordinates coord1, Coordinates coord2) -> char 
+		{
+			if (coord1.first == coord2.first) 
+			{ // Misma Columna
+				return (coord1.second < coord2.second) ? 'U' : 'D';
+			}
+			else if (coord1.second == coord2.second) 
+			{ // Misma fila
+				return (coord1.first < coord2.first) ? 'R' : 'L';
+			}
+
+			return 'N'; // No debería ocurrir, pues al menos una coordenada es igual
+		};
+
+
+
+		auto cal_des_boats = [this, player]() -> size_t
+		{
+			size_t destroyed_boats = 0;
+			size_t indx = 0;
+			for (auto boat : player->get_build().get_fleet().get_boats())
+			{
+				if (boat->get_distruction_per(player->get_map()) == 100.00f)
+				{
+					this->destroyed_boats[indx] = boat;		// Agregamos el barco a nuestra lista de destruidos
+					++destroyed_boats;
+				}
+				++indx;
+			}
+			return destroyed_boats;
+		};
+		size_t destroyed_boats = cal_des_boats();
+		
+
+		// Una vez se le hayan acabado los heals al enemigo poenemos nuestras celdas acertadas para repasar
+		static bool already_reshoted = false; // para que solo se mande a repasar los shots una vez 
+		if (player->get_build().get_arsenal().get_items()[2]->get_stock() == 0 && !already_reshoted && cells_to_reshot.size() == 0)
+		{
+			for (auto cell : successful_shots)
+			{
+				this->cells_to_reshot.push(cell);
+			}
+			already_reshoted = true;
+		}
+
+		bool have_to_cure = false; 
+		std::vector<size_t> damaged_boat_indx; 			// Indices de los botes que estan dañados
+		std::vector<size_t> good_boats_indx;
+		size_t indx = 0; 
+		for (auto boat : bot_boats)	// Obtenemos la lista de botes que tienen mas del 50% de destruccion y los que tienen menos o igual 50%
+		{
+			if (boat->get_distruction_per(bot_map) > 0)							
+			{	
+				damaged_boat_indx.push_back(indx);
+			}
+			if (boat->get_distruction_per(bot_map) <= 50.00f)
+			{
+				good_boats_indx.push_back(indx);
+			}
+			if (boat->get_distruction_per(bot_map) > 50.00f)  
+			{
+				have_to_cure = true;						
+			}
+			++indx;
+		}
+
+		// Si uno de nuestros botes supera el 50% de destruccion priorizamos la curacion
+		if (have_to_cure && heal->get_stock() > 0)			// Si no hay heals pasamos al siguiente
+		{
+			if (damaged_boat_indx.size() > 0)			    // Si hay botes destruidos 
+			{
+				size_t random_indx = get_random_uniform(damaged_boat_indx.size() - 1); 
+				auto boat_coordinates = bot_boats[damaged_boat_indx[random_indx]]->get_boat_coordinates(); // bote aleatorio
+
+				// Buscamos aleatoriamente una celda destruida del bote aleatorio
+				indx = 0;
+				std::vector<std::unordered_set<Coordinates, PairHash>::iterator> damaged_cells;
+				for (auto it = boat_coordinates.begin(); it != boat_coordinates.end(); ++it) 
+				{
+					if (bot_map->is_destroyed(it->first, it->second)) 
+					{
+						damaged_cells.push_back(it); 					// Guardamos el iterador 
+					}
+				}
+
+				random_indx = get_random_uniform(damaged_cells.size() - 1);		// Obtenemos un indice para los iteradores, aleatorio
+				Coordinates random_coordinates = *(damaged_cells[random_indx]); // celda aleatoria
+
+
+				heal->use_on(player_pair, random_coordinates.first, random_coordinates.second);
+				return true;			
+			}
+		}
+		
+		// Si no, vemos si tenemos un objetivo en nuestro arbol (target_boat)
+		if (target_boat == nullptr)			// si no hay un target boat
+		{
+			bool we_should_shot = true;
+
+			// Si quedan escudos hacemos un 50/50 a ver si disparamos o protegemos
+			if (shild->get_stock() > 0)
+			{
+				bool we_should_shot = get_random_uniform(1);
+			}
+
+			if (we_should_shot)	// Disparamos espaciadamente
+			{
+				auto select_shot_cell = [this]() -> Coordinates
+				{
+					auto player_map = this->get_radar();
+					// Comprobar si hay que repasar un disparo
+					if (this->cells_to_reshot.size() > 0)
+					{
+						auto cell = this->cells_to_reshot.top();
+						this->cells_to_reshot.pop();
+						return cell;
+					}
+					else // Si no hay que repasar uno, disparar espaciadamente
+					{
+						// Intentar diez veces buscar un celda agua, que no sea safe_zone
+						Coordinates ran_cell(get_random_uniform(player_map->get_columns() - 1), get_random_uniform(player_map->get_rows() - 1));
+
+						for (int i = 0; i < 10 && !this->board->is_water(ran_cell.first, ran_cell.second); ++i)
+						{
+							ran_cell = std::make_pair(get_random_uniform(player_map->get_columns() - 1), get_random_uniform(player_map->get_rows() - 1));
+
+							if (this->board->is_destroyed(ran_cell.first, ran_cell.second) || this->board->is_failed(ran_cell.first, ran_cell.second))
+							{
+								--i; 	// Solo sumamos un intento si fue tipo Map_cell = safe zone
+							}
+						}	
+						if (this->board->is_water(ran_cell.first, ran_cell.second))
+						{
+							return ran_cell;
+						}
+
+						// Si no se encontro ninguna celda water, disparar en una safe Zone
+						for (int i = 0; i < 10 && !this->board->is_water(ran_cell.first, ran_cell.second) && 
+												  !this->board->is_main(ran_cell.first, ran_cell.second); ++i)
+						{
+							ran_cell = std::make_pair(get_random_uniform(player_map->get_columns() - 1), get_random_uniform(player_map->get_rows() - 1));
+						}
+
+						// Se supone que en este punto, la celda ran_cell, sera siempre o agua o safe zone
+						return ran_cell;
+					}
+				};
+
+				Coordinates cell_to_shot = select_shot_cell();
+				
+				missile->use_on(player_pair, cell_to_shot.first, cell_to_shot.second);
+				
+				// Asiganar al bot los datos obtenidos del disparo
+				if (player_map->is_failed(cell_to_shot.first, cell_to_shot.second))				// fallamos
+				{
+					board->set_fail(board->get_ptr_cell(cell_to_shot.first, cell_to_shot.second));
+					board->create_safe_zone(cell_to_shot);
+				}
+				else if (player_map->is_destroyed(cell_to_shot.first, cell_to_shot.second))      // Acerto
+				{
+					// Marcar nuestra board como destruida, y agregar el tiro a successful shots, agregar barcos si se destruyeron 
+					// a la lista de barcos y mandar a construir el targetboat
+					board->set_destroy(board->get_ptr_cell(cell_to_shot.first, cell_to_shot.second));
+					successful_shots.push_back(cell_to_shot);
+					build_target_boat(cell_to_shot);	
+					
+					size_t new_des_boats = cal_des_boats();
+					if (new_des_boats > destroyed_boats)	// Si antes del disparo teniamos menos barcos destruidos significa que destruimos un con el disparo
+					{
+						target_boat = nullptr;		// Entonces eliminamos el arbol de posibilidades
+					}
+					
+				}
+				else if (player_map->is_boat(cell_to_shot.first, cell_to_shot.second))			 // Disparo a un escudo
+				{
+					// Marcar nuestra board como bote, y agregar el tiro a cells-to-reshot
+					board->set_boat(board->get_ptr_cell(cell_to_shot.first, cell_to_shot.second));
+					cells_to_reshot.push(cell_to_shot);
+				}
+				return false;
+			}
+			else 				// Protegemos una de nuestras casillas 
+			{	
+				size_t random_indx = get_random_uniform(good_boats_indx.size() - 1); 
+				auto boat_coordinates = bot_boats[good_boats_indx[random_indx]]->get_boat_coordinates(); // bote aleatorio con menos del 50%
+
+				// Buscamos aleatoriamente una celda buena del bote aleatorio
+				indx = 0;
+				std::vector<std::unordered_set<Coordinates, PairHash>::iterator> boat_cells;
+				for (auto it = boat_coordinates.begin(); it != boat_coordinates.end(); ++it) 
+				{
+					if (bot_map->is_boat(it->first, it->second)) 
+					{
+						boat_cells.push_back(it); 					// Guardamos el iterador 
+					}
+				}
+
+				random_indx = get_random_uniform(boat_cells.size() - 1);     // Obtenemos un indice para los iteradores, aleatorio
+				Coordinates random_coordinates = *(boat_cells[random_indx]); // celda aleatoria
+
+				shild->use_on(player_pair, random_coordinates.first, random_coordinates.second);
+				return true;
+			}
+		}
+		else					// Si hay un target boat, seguimos disparando en funcion de el 
+		{
+			Node_ptr selected_node = target_boat->get_highest_key();
+			Data& clave = selected_node->get_ref_key();
+			auto coord = std::get<0>(clave);
+			auto percent = std::get<1>(clave);
+
+			bool use_normal_missile = true;
+
+			// Seleccionar entre misil normal o super misil
+			if (charged_missile->get_stock() > 0 && percent >= 90.00f)
+			{
+				use_normal_missile = false;
+			}
+			else if (charged_missile->get_stock() > 0 && percent > 75.00f)
+			{
+				use_normal_missile = get_random_uniform(1);
+			}
+
+			use_normal_missile ? missile->use_on(player_pair, coord.first, coord.second) : charged_missile->use_on(player_pair, coord.first, coord.second);
+
+			if (player_map->is_failed(coord.first, coord.second))				// fallamos
+			{
+				board->set_fail(board->get_ptr_cell(coord.first, coord.second));
+				board->create_safe_zone(coord);
+
+				// Cortar esta rama del arbol 
+				auto initial_coord = std::get<0>(target_boat->get_ref_key());
+				char relative_pos = get_relative_position(initial_coord, coord);
+				
+				if (relative_pos == 'R')	    // Esta a la derecha
+				{
+					selected_node->left->right = nullptr;
+				}
+				else if (relative_pos == 'L')	// Esta a la izq
+				{
+					selected_node->right->left = nullptr;
+				}
+				else if (relative_pos == 'D')	// Esta abajo
+				{
+					selected_node->up->down = nullptr;
+				}
+				else if (relative_pos == 'U')	// Esta arriba
+				{
+					selected_node->down->up = nullptr;
+				}
+			}
+			else if (player_map->is_destroyed(coord.first, coord.second))      // Acerto
+			{
+				// Marcar nuestra board como destruida, y agregar el tiro a successful shots, agregar barcos si se destruyeron 
+				// a la lista de barcos y mandar a construir el targetboat
+				std::get<2>(clave) = false;
+				board->set_destroy(board->get_ptr_cell(coord.first, coord.second));
+				successful_shots.push_back(coord);	
+				
+				size_t new_des_boats = cal_des_boats();
+				if (new_des_boats > destroyed_boats)	// Si antes del disparo teniamos menos barcos destruidos significa que destruimos un con el disparo
+				{
+					target_boat = nullptr;		// Entonces eliminamos el arbol de posibilidades
+				}
+			}
+			else if (player_map->is_boat(coord.first, coord.second))			 // Disparo a un escudo
+			{
+				// Marcar nuestra board como bote, y agregar el tiro a cells-to-reshot
+				board->set_boat(board->get_ptr_cell(coord.first, coord.second));
+				cells_to_reshot.push(coord);
+			}
+			return false;
+		}
 	}
 }

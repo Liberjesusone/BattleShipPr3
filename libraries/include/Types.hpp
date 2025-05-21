@@ -14,6 +14,7 @@
 #include <list>
 #include <random>
 #include <queue>
+#include <stack>
 #include <vector>
 #include <utility>
 #include <unordered_map>
@@ -288,6 +289,13 @@ namespace Party
 			// CHECK TYPE
 
 			/**
+			 * @brief Verifica si la celda es de tipo Map_cell, es decir que no se puede transformar en ningun otro tipo derivado
+			 * 
+			 * @return devuelve true si es solo tipo Map_cell, y false, si se puede transformar en otro tipo derivado
+			 */
+			bool is_main(size_t col, size_t row);
+
+			/**
 			 * @brief Revisa si la casilla mandada es o no agua
 			 * 
 			 * @param cell casilla a revisar
@@ -417,42 +425,44 @@ namespace Party
 			// Setters 
 
 			/**
+			 * @brief Funcion para marcar una casilla como tipo Map_cell
+			 *
+			 * @param cell shared_ptr de la celda a marcar
+			 */
+			void set_main(Map_cell_ptr cell) noexcept;
+
+			/**
 			 * @brief Funcion para marcar una casilla como agua
 			 * 
-			 * @param row Fila a marcar
-			 * @param col Columna a marcar 
+			 * @param cell shared_ptr de la celda a marcar
 			 */
 			void set_water(Map_cell_ptr cell) noexcept;
 
 			/**
 			 * @brief Funcion para marcar una casilla como destruida
 			 * 
-			 * @param row Fila a marcar
-			 * @param col Columna a marcar
+			 * @param cell shared_ptr de la celda a marcar
 			 */
 			void set_destroy(Map_cell_ptr cell) noexcept;
 
 			/**
 			 * @brief Funcion para marcar una casilla como fallada, cuando un disparo no acierta
 			 * 
-			 * @param row Fila a marcar
-			 * @param col Columna a marcar
+			 * @param cell shared_ptr de la celda a marcar
 			 */
 			void set_fail(Map_cell_ptr cell) noexcept;
 
 			/**
 			 * @brief Funcion para marcar una casilla ocupada por un bote, cuando un disparo no acierta
 			 * 
-			 * @param row Fila a marcar
-			 * @param col Columna a marcar
+			 * @param cell shared_ptr de la celda a marcar
 			 */
 			void set_boat(Map_cell_ptr cell) noexcept;
 
 			/**
 			 * @brief Funcion para marcar una casilla como protegida
 			 * 
-			 * @param row Fila a marcar
-			 * @param col Columna a marcar
+			 * @param cell shared_ptr de la celda a marcar
 			 */
 			void set_protected(Map_cell_ptr cell) noexcept;
 
@@ -480,6 +490,11 @@ namespace Party
 			 * @note bote tiene que ser un barco previamnete perteneciente al mapa, si no el comportamiento puede ser indefinido
 			 */
 			void create_safe_zone(Boat_ptr bote) noexcept;
+
+			/**
+			 * @brief Crea una safe zone con Map_cell como clase base, al rededor de la celda indicada
+			 */
+			void create_safe_zone(Coordinates cell) noexcept;
 
 			/**
 			 * @brief Revisa si hay colision con el bote recibido y algun otro del mapa actual y si cabe dentro del mapa
@@ -724,6 +739,7 @@ namespace Play
 		private:
 			Coord_list boat_coordinates;     // Lista de las coordenadas de las celdas que pertenecen al bote
 			std::string name{""};	
+			float distruction_per{0};		 // Porcentaje de destruccion del bote
 
 		public: 
 			// Constructor por defecto
@@ -744,6 +760,8 @@ namespace Play
 			bool contains(Map_cell_ptr cell) const noexcept;
 
 			// Getters 
+
+			float get_distruction_per(Map_ptr mapa);
 
 			Coord_list& get_boat_coordinates() noexcept;
 
@@ -875,10 +893,20 @@ namespace BotLogic
 	 */
 	class Bot : public Player
 	{
-
+		// Cada nodo cuanta con una coordenada que es la que representa en el mapa, y la cantidad de veces que los barcos pueden
+		// Pasar por sobre ella, segun las probabilidades del bot, y un bool que sera true, si esta disponible, y false, si ya la disparamos
+		using Data = std::tuple<Coordinates, size_t, bool>;
+		using Node_ptr = std::shared_ptr<Node<Data>>;
 		private:
 			// Arbol que representa las posiciones de los posibles barcos segun el disparo acertado
-			static Node<int> arbol_de_posiciones;
+			Node_ptr target_boat;
+
+			std::vector<Boat_ptr> destroyed_boats;				// Lista propia de los barcos que lleva destruidos
+			Map_ptr board = std::make_shared<Map>(5, 10);	    // Matriz donde se dispara espaciadamente y se marca una safezone
+
+			std::vector<Coordinates> successful_shots;			// vector con las celdas que ha acertado el bot
+			std::stack<Coordinates> cells_to_reshot;		        // pila con las celdas que el bot deberia volver a disparar, ejem: shilds
+			
 
 		public:
 			// Constructor por defecto
@@ -914,6 +942,18 @@ namespace BotLogic
 			 * @return devuelve true si uso un comodin, y false si uso un misil
 			 */
 			bool play(Player_ptr player);
+
+			/**
+			 * @brief Crea el arbol de posibilidades en funcion de un target boat alrededor de la celda 
+			 * 
+			 * @param coord de la celda donde se disparo y acerto, para empezara a crear desde alli el target boat
+			 */
+			void build_target_boat(Coordinates coord);
+
+			/**
+			 * @brief Creates a complete movement evaluating with the bot logic how should he move
+			 */
+			bool make_movement(Player_ptr player);
 	};
 }
 
