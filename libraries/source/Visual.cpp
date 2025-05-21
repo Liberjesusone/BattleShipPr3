@@ -131,7 +131,7 @@ namespace Painter
 
     void Drawer::draw(std::vector<sf::Sprite>& sprites_cells, Map_ptr mapa, bool isRadar)
     {
-        isRadar = false;
+        // isRadar = false;
         for (int y = 0; y < mapa->get_rows(); ++y)
         {
             for (int x = 0; x < mapa->get_columns(); ++x)

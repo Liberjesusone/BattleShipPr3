@@ -632,6 +632,19 @@ namespace Play
 		return this->boat_coordinates.contains(cell->get_location());
 	}
 
+	float Boat::get_distruction_per(Map_ptr mapa)
+	{
+		size_t destroyed_cells = 0;
+		for (auto coord : this->get_boat_coordinates())
+		{
+			if (mapa->is_destroyed(coord.first, coord.second))
+			{
+				++destroyed_cells;
+			}
+		}
+		return this->distruction_per = (100 * static_cast<float>(destroyed_cells)) / static_cast<float>(this->get_size());
+	}
+	
 	Boat::Coord_list& Boat::get_boat_coordinates() noexcept
 	{
 		return this->boat_coordinates;
@@ -775,7 +788,7 @@ namespace BotLogic
 
 	Movement Bot::get_next_move(Player enemy)
 	{
-		// OJO por desarrollar
+		
 	}
 
 	Movement Bot::get_random_move()
@@ -913,4 +926,69 @@ namespace BotLogic
 		item->use_on(pair, cell.first, cell.second);
 		return item->get_type() == Item::comodin_type();	
 	}
+
+	bool Bot::make_movement(Player_ptr player)
+	{	
+		Map_ptr mapa = player->get_map();
+		Map_ptr bot_map = player->get_radar();
+
+		bool have_to_cure; 
+		for (auto boat : this->get_build().get_fleet().get_boats())
+		{
+			if (boat->get_distruction_per(bot_map) > 50.00f)
+			{
+				have_to_cure = true;
+			}
+		}
+
+		// Si uno de nuestros botes supera el 50% de destruccion priorizamos la curacion
+		auto heal = this->get_build().get_arsenal().get_items()[2];
+		if (have_to_cure && heal->get_stock() > 0)
+		{
+			std::vector<int> damaged_boat_indx; 			// Indices de los botes que tienen menos del 50% de destruccion 
+			for (auto boat : player->get_build().get_fleet().get_boats())
+			{
+				for (auto coord : boat->get_boat_coordinates())
+				{
+					
+				}
+			}
+			if (damaged_boat_indx.size())
+			{
+
+			}
+		}
+		else // Si no, vemos si tenemos un objetivo en nuestro arbol (target_boat)
+		{
+			if (/*target_boat == nullptr*/true)			// si no hay un target boat
+			{
+				bool we_should_shot = true;
+
+				// Si quedan escudos hacemos un 50/50 a ver si disparamos o protegemos
+				if (this->get_build().get_arsenal().get_items()[3]->get_stock() > 0)
+				{
+					bool we_should_shot = get_random_uniform(1);
+				}
+
+				if (we_should_shot)	// Disparamos espaciadamente
+				{
+
+				}
+				else 				// Protegemos una de nuestras casillas 
+				{
+					
+
+				}
+
+
+			}
+			else								// Si hay un target boat, seguimos disparando en funcion de el 
+			{
+
+
+			}
+
+		}
+	}
+
 }

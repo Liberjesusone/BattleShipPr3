@@ -724,6 +724,7 @@ namespace Play
 		private:
 			Coord_list boat_coordinates;     // Lista de las coordenadas de las celdas que pertenecen al bote
 			std::string name{""};	
+			float distruction_per{0};		 // Porcentaje de destruccion del bote
 
 		public: 
 			// Constructor por defecto
@@ -744,6 +745,8 @@ namespace Play
 			bool contains(Map_cell_ptr cell) const noexcept;
 
 			// Getters 
+
+			float get_distruction_per(Map_ptr mapa);
 
 			Coord_list& get_boat_coordinates() noexcept;
 
@@ -878,7 +881,10 @@ namespace BotLogic
 
 		private:
 			// Arbol que representa las posiciones de los posibles barcos segun el disparo acertado
-			static Node<int> arbol_de_posiciones;
+			static Node<int> target_boat;
+
+			std::vector<Boat_ptr> destroyed_boats;				// Lista propia de los barcos que lleva destruidos
+			Map board;											// 
 
 		public:
 			// Constructor por defecto
@@ -914,6 +920,11 @@ namespace BotLogic
 			 * @return devuelve true si uso un comodin, y false si uso un misil
 			 */
 			bool play(Player_ptr player);
+
+			/**
+			 * @brief Creates a complete movement evaluating with the bot logic how should he move
+			 */
+			bool make_movement(Player_ptr player);
 	};
 }
 

@@ -360,6 +360,7 @@ void play_window(sf::RenderWindow& window, Player& player, Bot& bot)
                     {
                         enemy_cells[index].setTexture(Resources::get_texture(Resources::failed_image()));
                     }
+                    enemy_cells[index].setScale(scale);
 
                     // Ejecutamos el bot
                     bool was_comodin = bot.play(std::make_shared<Player>(player));      // jugamos y vemos que tipo fue
