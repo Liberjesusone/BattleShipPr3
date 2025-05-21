@@ -4,9 +4,9 @@
 ##
 ## 📋 Requisitos Previos (Linux)  
 
-Para compilar y ejecutar este proyecto, necesitas instalar:  
+Para compilar y ejecutar este proyecto, se necesita instalar:  
 
-### 1. Compilador C++ (g++)  
+### 1. Compilador C++ (g++)
 ```bash
 # Debian/Ubuntu
 sudo apt install g++
@@ -29,7 +29,6 @@ sudo pacman -S cmake
 # Fedora/RHEL
 sudo dnf install cmake
 ```
-
 ### 3. Sfml
 ```bash
 # Debian/Ubuntu
@@ -44,7 +43,7 @@ sudo dnf install SFML-devel
 ##
 ## 🛠️ Ejecución
 
-### 1. Descargar el archivo .zip	
+### 1. Descargar el archivo .zip
 
 ### 2. Descomprimir el .zip:
 
@@ -53,6 +52,17 @@ sudo dnf install SFML-devel
 ### 4. Crear los archivos de compilación
 ```bash
 cmake -S. -B build
+```
+*NOTA: Si la versión de cmake instalada provoca un error de incompatibildad, debe ir al archivo 'CMakeLists.txt' y cambiarla:*
+```bash
+// Para saber la versión instalada de cmake
+
+cmake --version
+```
+```bash
+// En el archivo 'CMakeLists.txt' cambiar:
+
+cmake_minimum_required(VERSION 'version')
 ```
 
 ### 5. Compilar
@@ -69,9 +79,10 @@ cmake --build build
 
 ### Fase de Colocación
 1. **Coloca tu flota** en el tablero:
-     - Barco de **4 casillas** 
-     - Brcos de **3 casillas** 
-     - Barcos de **2 casillas** 
+     - Barco de **5 casillas** 
+     - Brcos de **4 casillas** 
+     - Barcos de **3 casillas** 
+     - Barcos de **2 casilla** 
      - Barcos de **1 casilla** 
   
 ### Fase de Batalla
@@ -81,4 +92,4 @@ cmake --build build
    - ❤️ **Curación**: Repara una casilla dañada
 
 ### Objetivo Final
-**Hundir todos los barcos enemigos** antes de que destruyan los tuyos
+**Hundir todos los barcos del enemigo** antes de que destruyan los tuyos

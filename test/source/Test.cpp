@@ -1,5 +1,8 @@
 #include "Visual.hpp"
+#include "Types.hpp"
 #include <map>
+#include <chrono>
+#include <thread>
 
 void load_textures(sf::Texture& water_texture, sf::Texture& ship_texture, sf::Texture& miss_texture, sf::Texture& destroyed_texture, 
     sf::Texture& radar_texture, sf::Texture& wood_table_texture)
@@ -102,6 +105,7 @@ sf::Texture create_special_button(double CELL_SIZE_X, double CELL_SIZE_Y, sf::Te
     return circle_texture;
 }
 
+
 void message_window(sf::RenderWindow& window, const std::string& message_str, sf::Color color)
 {
     sf::Font font = Resources::get_font(Resources::titulos_font());
@@ -154,13 +158,9 @@ void message_window(sf::RenderWindow& window, const std::string& message_str, sf
     }
 }
 
-void play_window(sf::RenderWindow& window, Player& player) 
+void play_window(sf::RenderWindow& window, Player& player, Bot& bot) 
 {
     sf::Font font = Resources::get_font(Resources::titulos_font());
-
-    //LIVES
-    int player_lives = 0;
-    int enemy_lives = 0;
 
     //MAP DIVISIONS
     sf::Vector2u windowSize = window.getSize();
@@ -175,12 +175,12 @@ void play_window(sf::RenderWindow& window, Player& player)
     sf::RectangleShape player_panel(sf::Vector2f(MAP_WIDTH, RADAR_HEIGHT)); // panel del mapa propio abajo a la derecha
     
     //MAPS
-    Map& player_map = player.get_map();
-    Map& radar_map = player.get_radar();
+    Map_ptr player_map = player.get_map();
+    Map_ptr radar_map = player.get_radar();
+    PlayerPair player_pair = std::make_pair(std::make_shared<Player>(player), std::make_shared<Player>(bot));
 
-    const float CELL_SIZE_X = static_cast<float>(MAP_WIDTH) / player_map.get_columns();
-    const float CELL_SIZE_Y = static_cast<float>(RADAR_HEIGHT) / player_map.get_rows();
-        //sf::Texture cell_texture = create_cell(CELL_SIZE_X, CELL_SIZE_Y);
+    const float CELL_SIZE_X = static_cast<float>(MAP_WIDTH) / player_map->get_columns();
+    const float CELL_SIZE_Y = static_cast<float>(RADAR_HEIGHT) / player_map->get_rows();
 
     //TEXTURES
     sf::Text exit_button; 
@@ -188,23 +188,10 @@ void play_window(sf::RenderWindow& window, Player& player)
     std::vector<sf::Sprite> enemy_cells, player_cells;
     load_textures(water_player_texture, ship_texture, miss_texture, destroyed_texture, water_enemy_texture, wood_table_texture);
 
-    //SHIPS
-    std::vector<sf::Sprite> ships;
-
-    for (int i = 0; i < 2; ++i) 
-    {
-        sf::Sprite ship(ship_texture);
-        double scale_factor = 0.8 - (i * 0.15);    
-        double scale_factor_y = 0.3 - (i * 0.05);
-        ship.setScale(scale_factor, scale_factor_y); 
-        ship.setPosition(0, 100 + i * 150);
-        ships.push_back(ship);
-    }
-
     //EXIT BUTTON
     exit_button.setFont(font);
     exit_button.setString("Salir");
-    exit_button.setCharacterSize(30);
+    exit_button.setCharacterSize(40);
     exit_button.setPosition(INFO_WIDTH * 0.05f, MAP_HEIGHT * 0.05f);
     exit_button.setFillColor(sf::Color::White);
 
@@ -238,21 +225,17 @@ void play_window(sf::RenderWindow& window, Player& player)
     player_panel.setPosition(INFO_WIDTH, RADAR_HEIGHT);
 
     //CELLS - RADAR (ENEMY MAP)
-    for (int y = 0; y < radar_map.get_rows(); ++y)
+    for (int y = 0; y < radar_map->get_rows(); ++y)
     {
-        for (int x = 0; x < radar_map.get_columns(); ++x)
+        for (int x = 0; x < radar_map->get_columns(); ++x)
         {
             sf::Sprite enemy_sprite;
-            if (radar_map.is_boat(x,y))
+            if (radar_map->is_boat(x,y))
             {
-                enemy_sprite.setTexture(Resources::get_texture(Resources::boat_body_image()));
-                ++enemy_lives;
-            }
-            else
-            {
-                enemy_sprite.setTexture(water_enemy_texture);
+                bot.increase_lives();
             }
             
+            enemy_sprite.setTexture(water_enemy_texture);    
             enemy_sprite.setScale(CELL_SIZE_X / enemy_sprite.getTexture()->getSize().x, CELL_SIZE_Y / enemy_sprite.getTexture()->getSize().y);
             enemy_sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, y * CELL_SIZE_Y); // Posición relativa al radar_panel
             enemy_cells.push_back(enemy_sprite);
@@ -260,32 +243,54 @@ void play_window(sf::RenderWindow& window, Player& player)
     }
 
     //CELLS - PLAYER MAP
-    for (int y = 0; y < player_map.get_rows(); ++y)
+    for (int y = 0; y < player_map->get_rows(); ++y)
     {
-        for (int x = 0; x < player_map.get_columns(); ++x)
+        for (int x = 0; x < player_map->get_columns(); ++x)
         {
             sf::Sprite player_sprite;
-            if (player_map.is_boat(x,y))
+            if (player_map->is_boat(x,y))
             {
                 player_sprite.setTexture(Resources::get_texture(Resources::boat_body_image()));
+                player.increase_lives();
             }
             else
             {
                 player_sprite.setTexture(water_player_texture);
-                ++player_lives;
+                
             }
-            
             player_sprite.setScale(CELL_SIZE_X / player_sprite.getTexture()->getSize().x, CELL_SIZE_Y / player_sprite.getTexture()->getSize().y);
             player_sprite.setPosition(INFO_WIDTH + x * CELL_SIZE_X, RADAR_HEIGHT + y * CELL_SIZE_Y); // Posición relativa al player_panel
             player_cells.push_back(player_sprite);
         }
     }
+    
     //CONTROL VARIABLES
     int x = 0;
     int y = 0;
     bool is_shot_valid = false;
     bool is_shield_valid = false;
     bool is_heal_valid = false;
+
+    //IA MESSAGE
+    sf::Text bot_shot_message("IA DISPARA", font, 30);
+    sf::Text bot_comodin_message("IA USA COMODIN", font, 30);
+    bot_shot_message.setFillColor(sf::Color(255, 255, 255, 0));
+    bot_shot_message.setPosition(shot_button.getPosition().x, shot_button.getPosition().y + shot_button.getGlobalBounds().height + 50);
+    bot_comodin_message.setFillColor(sf::Color(255, 255, 255, 0));
+    bot_comodin_message.setPosition(shot_button.getPosition().x, shot_button.getPosition().y + shot_button.getGlobalBounds().height + 50);
+
+    //BOAT LIST 
+    std::vector<sf::Text> boat_messages;
+    for (int i = 0; i < 5; ++i) 
+    {
+        sf::Text boat_text;
+        boat_text.setFont(font);
+        boat_text.setString("Barco [" + std::to_string(i + 1) + "]");
+        boat_text.setCharacterSize(30); 
+        boat_text.setFillColor(sf::Color::White);
+        boat_text.setPosition(exit_button.getPosition().x, exit_button.getPosition().y + exit_button.getGlobalBounds().height + 50 + (i * 40));
+        boat_messages.push_back(boat_text);
+    } 
   
     //PLAY LOOP
     while(window.isOpen())
@@ -298,13 +303,15 @@ void play_window(sf::RenderWindow& window, Player& player)
             sf::Vector2f mouse_pos(sf::Mouse::getPosition(window));  
 
             //LIVES VERIFICATION
-            if (enemy_lives == 0)
+            std::cout<<"VIDA IA: "<<bot.get_lives()<<std::endl;
+            std::cout<<"VIDA JUGADOR: "<<player.get_lives()<<std::endl;
+            if (bot.get_lives() == 0)
             {
                 message_window(window, "Congratulations, you have won", sf::Color::Green);
-                std::cout<<"JUADOR GANA\n";
+                std::cout<<"JUGADOR GANA\n";
                 return;
             }
-            else if (player_lives == 0)
+            else if (player.get_lives() == 0)
             {
                 message_window(window, "You have lost!", sf::Color::Red);
                 std::cout<<"IA GANA\n";
@@ -330,22 +337,32 @@ void play_window(sf::RenderWindow& window, Player& player)
                     {
                         if (enemy_cells[i].getGlobalBounds().contains(mouse_pos)) 
                         {
-                            shot_button.setColor(sf::Color(255,255,255,255));
-                            is_shot_valid = true;                            
-                            x = (i % radar_map.get_columns());
-                            y = (i / radar_map.get_columns());        
+                            x = (i % radar_map->get_columns());
+                            y = (i / radar_map->get_columns());  
+
+                            if (radar_map->is_boat(x,y) || radar_map->is_water(x,y))
+                            {
+                                shot_button.setColor(sf::Color(255,255,255,255));
+                                is_shot_valid = true;
+                            }
+
+                            if (radar_map->is_failed(x,y) || radar_map->is_destroyed(x,y))
+                            {
+                                shot_button.setColor(sf::Color(255,255,255,128));
+                                is_shot_valid = false;
+                            }      
                     
                             std::string tipo;
                             
-                            if (radar_map.is_water(x, y)) 
+                            if (radar_map->is_water(x, y)) 
                             {
                                 tipo = "Agua";
                             } 
-                            else if (radar_map.is_boat(x, y)) 
+                            else if (radar_map->is_boat(x, y)) 
                             {
                                 tipo = "Barco";
                             }
-                            else if (radar_map.is_failed(x, y)) 
+                            else if (radar_map->is_failed(x, y)) 
                             {
                                 tipo = "Disparo fallido";
                             }
@@ -363,16 +380,20 @@ void play_window(sf::RenderWindow& window, Player& player)
                 {
                     is_shot_valid = false;
                     shot_button.setColor(sf::Color(255,255,255,128));
+                    is_heal_valid = false;
+                    heal_button.setColor(sf::Color(255,255,255,128));
+                    is_heal_valid = false;
+                    shield_button.setColor(sf::Color(255,255,255,128));
                     
                     for (size_t i = 0; i < player_cells.size(); ++i) 
                     {
                         if (player_cells[i].getGlobalBounds().contains(mouse_pos)) 
                         {                                            
-                            x = (i % player_map.get_columns());
-                            y = (i / player_map.get_columns());
+                            x = (i % player_map->get_columns());
+                            y = (i / player_map->get_columns());
                             
                             //El comodin SHIELD solo se activa si la casilla es un bote
-                            if (player_map.is_boat(x,y))
+                            if (player_map->is_boat(x,y))
                             {
                                 shield_button.setColor(sf::Color(255,255,255,255));
                                 is_shield_valid = true;
@@ -384,7 +405,7 @@ void play_window(sf::RenderWindow& window, Player& player)
                             }
 
                             //El comodin HEAL solo se activa si la casilla es un bote destruido
-                            if (player_map.is_destroyed(x,y))
+                            if (player_map->is_destroyed(x,y))
                             {
                                 is_shield_valid = true;
                                 shield_button.setColor(sf::Color(255,255,255,255));
@@ -397,15 +418,15 @@ void play_window(sf::RenderWindow& window, Player& player)
                             
                             std::string tipo;
                             
-                            if (player_map.is_water(x, y)) 
+                            if (player_map->is_water(x, y)) 
                             {
                                 tipo = "Agua";
                             } 
-                            else if (player_map.is_boat(x, y)) 
+                            else if (player_map->is_boat(x, y)) 
                             {
                                 tipo = "Barco";
                             }
-                            else if (player_map.is_failed(x, y)) 
+                            else if (player_map->is_failed(x, y)) 
                             {
                                 tipo = "Disparo fallido";
                             }
@@ -422,67 +443,131 @@ void play_window(sf::RenderWindow& window, Player& player)
                 else if (shot_button.getGlobalBounds().contains(mouse_pos) && is_shot_valid)
                 {
                     is_shot_valid = false;
-                    size_t index = y * radar_map.get_columns() + x;
-                    Map_cell_ptr cell = radar_map.get_ptr_cell(x, y);
-                    
+                    size_t index = y * radar_map->get_columns() + x;
+                    Map_cell_ptr cell = radar_map->get_ptr_cell(x, y);                    
+
                     shot_button.setColor(sf::Color(255,255,255,128));
-                                  
-                    if (radar_map.is_water(x, y)) 
-                    { 
-                        radar_map.set_fail(cell);
-                        enemy_cells[index].setTexture(Resources::get_texture(Resources::failed_image())); 
-                        enemy_cells[index].setScale(CELL_SIZE_X / enemy_cells[index].getTexture()->getSize().x, CELL_SIZE_Y / enemy_cells[index].getTexture()->getSize().y);                                                
-                        std::cout<<"Celda ["<<x<<", "<<y<<"] Fallaste\n"; 
-                    }
-                    else if (radar_map.is_boat(x,y))
+                    
+                    player.get_build().get_arsenal().get_items()[0]->use_on(player_pair, x, y);   
+
+                    //VERIFICAR LISTA
+                    
+                    if (radar_map->is_destroyed(x, y))
                     {
-                        --enemy_lives;
-                        radar_map.set_destroy(cell);
-                        enemy_cells[index].setTexture(Resources::get_texture(Resources::fire_image())); 
-                        enemy_cells[index].setScale(CELL_SIZE_X / enemy_cells[index].getTexture()->getSize().x, CELL_SIZE_Y / enemy_cells[index].getTexture()->getSize().y);                                                
+                        enemy_cells[index].setTexture(Resources::get_texture(Resources::fire_image()));
+                    }
+                    else 
+                    {
+                        enemy_cells[index].setTexture(Resources::get_texture(Resources::failed_image()));
+                    }
+                    
+                    enemy_cells[index].setScale(CELL_SIZE_X / enemy_cells[index].getTexture()->getSize().x, CELL_SIZE_Y / enemy_cells[index].getTexture()->getSize().y);
+
+                    // Ejecutamos el bot
+                    bool was_comodin = bot.play(std::make_shared<Player>(player));      // jugamos y vemos que tipo fue
+                    if (was_comodin)
+                    {
+                        std::cout << "jugo comodin\n";
                         
-                        std::cout<<"Celda ["<<x<<", "<<y<<"] Acertaste\n"; 
-                    }                
+                        bot_comodin_message.setFillColor(sf::Color(255,255,255,255));
+                        bot_shot_message.setFillColor(sf::Color(255,255,255,0));
+
+                        Drawer::draw(enemy_cells, radar_map, was_comodin);                        
+                    }
+                    else 
+                    {
+                        std::cout << "jugo misil\n";
+                        
+                        bot_comodin_message.setFillColor(sf::Color(255,255,255,0));
+                        bot_shot_message.setFillColor(sf::Color(255,255,255,255));
+
+                        Drawer::draw(player_cells, player_map, was_comodin);                    
+                    }
                 }
                 //SHIELD
                 else if (shield_button.getGlobalBounds().contains(mouse_pos) && is_shield_valid)
                 {
-                    size_t index = y * player_map.get_columns() + x;
-                    Map_cell_ptr cell = player_map.get_ptr_cell(x, y);                    
+                    size_t index = y * player_map->get_columns() + x;
+                    Map_cell_ptr cell = player_map->get_ptr_cell(x, y);                    
                     is_shield_valid = false;
-                    is_heal_valid = false;            
-                    //disminuir misil   
+                    is_heal_valid = false;                                   
 
                     shield_button.setColor(sf::Color(255,255,255,128));
                     heal_button.setColor(sf::Color(255,255,255,128));                                         
-                        
-                    player_map.set_protected(cell);
-                    player_cells[index].setTexture(Resources::get_texture(Resources::shield_image())); 
-                    player_cells[index].setScale(CELL_SIZE_X / player_cells[index].getTexture()->getSize().x, CELL_SIZE_Y / player_cells[index].getTexture()->getSize().y);                                                
-                        
-                    std::cout<<"Celda ["<<x<<", "<<y<<"] protegida\n";                                                              
+                
+                    std::cout<<"Celda ["<<x<<", "<<y<<"] protegida\n";
+                    
+                    player.get_build().get_arsenal().get_items()[3]->use_on(player_pair, x, y);   
+                    
+                    if (player_map->is_protected(x, y))
+                    {        
+                        player_cells[index].setTexture(Resources::get_texture(Resources::shield_image())); 
+                        player_cells[index].setScale(CELL_SIZE_X / player_cells[index].getTexture()->getSize().x, CELL_SIZE_Y / player_cells[index].getTexture()->getSize().y);
+                    }
+    
+                    // Ejecutamos el bot
+                    bool was_comodin = bot.play(std::make_shared<Player>(player));      // jugamos y vemos que tipo fue
+                    if (was_comodin)
+                    {
+                        std::cout << "jugo comodin\n";
+                        Drawer::draw(enemy_cells, radar_map, was_comodin);
+  
+                        bot_comodin_message.setFillColor(sf::Color(255,255,255,255));
+                        bot_shot_message.setFillColor(sf::Color(255,255,255,0));
+                    }
+                    else 
+                    {
+                        std::cout << "jugo misil\n";
+
+                        bot_comodin_message.setFillColor(sf::Color(255,255,255,0));
+                        bot_shot_message.setFillColor(sf::Color(255,255,255,255));
+
+                        Drawer::draw(player_cells, player_map, was_comodin);                       
+                    }          
                 }
                 //HEAL
                 else if (heal_button.getGlobalBounds().contains(mouse_pos) && is_heal_valid)
                 {
-                    size_t index = y * player_map.get_columns() + x;
-                    Map_cell_ptr cell = player_map.get_ptr_cell(x, y);                    
+                    size_t index = y * player_map->get_columns() + x;
+                    Map_cell_ptr cell = player_map->get_ptr_cell(x, y);                    
                     is_shield_valid = false;
-                    is_heal_valid = false;  
-                    //disminuir heal          
-                       
+                    is_heal_valid = false;            
+
                     shield_button.setColor(sf::Color(255,255,255,128));
                     heal_button.setColor(sf::Color(255,255,255,128));                                         
                         
-                    player_map.set_protected(cell);
-                    player_cells[index].setTexture(Resources::get_texture(Resources::heart_image())); 
-                    player_cells[index].setScale(CELL_SIZE_X / player_cells[index].getTexture()->getSize().x, CELL_SIZE_Y / player_cells[index].getTexture()->getSize().y);
+                    std::cout<<"Celda ["<<x<<", "<<y<<"] curada\n";    
+                
+                    player.get_build().get_arsenal().get_items()[2]->use_on(player_pair, x, y);   
                    
-                    std::cout<<"Celda ["<<x<<", "<<y<<"] curada\n";                                        
+                    if (player_map->is_boat(x, y))
+                    {        
+                        player_cells[index].setTexture(Resources::get_texture(Resources::boat_body_image())); 
+                        player_cells[index].setScale(CELL_SIZE_X / player_cells[index].getTexture()->getSize().x, CELL_SIZE_Y / player_cells[index].getTexture()->getSize().y);
+                    }
+
+                    // Ejecutamos el bot
+                    bool was_comodin = bot.play(std::make_shared<Player>(player));      // jugamos y vemos que tipo fue
+                    if (was_comodin)
+                    {
+                        std::cout << "jugo comodin\n";
+                        Drawer::draw(enemy_cells, radar_map, was_comodin);
+                        
+                        bot_comodin_message.setFillColor(sf::Color(255,255,255,255));
+                        bot_shot_message.setFillColor(sf::Color(255,255,255,0));
+                    }
+                    else 
+                    {
+                        std::cout << "jugo misil\n";
+                        Drawer::draw(player_cells, player_map, was_comodin);
+
+                        bot_comodin_message.setFillColor(sf::Color(255,255,255,0));
+                        bot_shot_message.setFillColor(sf::Color(255,255,255,255));
+                    }
                 }
             }
-
         }
+
         //PLAY DISPLAY
         window.clear();
         window.draw(info_panel);
@@ -492,6 +577,8 @@ void play_window(sf::RenderWindow& window, Player& player)
         window.draw(shot_button);
         window.draw(shield_button);
         window.draw(heal_button);
+        window.draw(bot_shot_message);
+        window.draw(bot_comodin_message);
        
         for (const auto& casilla : enemy_cells)
         {
@@ -502,12 +589,12 @@ void play_window(sf::RenderWindow& window, Player& player)
         {
           window.draw(casilla);  
         } 
-       
-        for (const auto& barco : ships)
-        {
-            window.draw(barco);
-        }
 
+        for (const auto& boat_text : boat_messages) 
+        {
+           window.draw(boat_text);
+        }
+       
         window.display();
     }
 }
@@ -521,9 +608,8 @@ void build_window(sf::RenderWindow& window)
     window.setTitle("Battle Ship - Build");
 
     // Construimos los mapas y el jugador
-    Map mapa(5, 10);
-    Map radar(5, 10);    
-    Bot::create_map(radar);     //Creacion del mapa del bot
+    Map_ptr mapa = std::make_shared<Map>(5, 10);
+    Map_ptr radar = std::make_shared<Map>(5, 10);    
     Bot bot("Bot", radar, mapa);
     Player player("Jugador", mapa, radar);
 
@@ -537,8 +623,8 @@ void build_window(sf::RenderWindow& window)
     const size_t MAP_WIDTH = window_size.x - INFO_WIDTH; // 2/3 para el mapa
     const size_t MAP_HEIGHT = WIN_HEIGHT * 0.8;
 
-    const size_t CELL_SIZE_X = MAP_WIDTH / mapa.get_columns();  // Ancho y alto de las celdas
-    const size_t CELL_SIZE_Y = MAP_HEIGHT / mapa.get_rows();
+    const size_t CELL_SIZE_X = MAP_WIDTH / mapa->get_columns();  // Ancho y alto de las celdas
+    const size_t CELL_SIZE_Y = MAP_HEIGHT / mapa->get_rows();
 
     const size_t TEXT_SIZE = WIN_HEIGHT * 0.05;
     const size_t BOTON_SIZE_X = WIN_WIDTH * 0.08;
@@ -565,18 +651,18 @@ void build_window(sf::RenderWindow& window)
 
     // CASILLAS DEL MAPA
     std::vector<sf::Sprite> player_casillas;
-    for (int y = 0; y < mapa.get_rows(); ++y)            // mapa del jugador
+    for (int y = 0; y < mapa->get_rows(); ++y)            // mapa del jugador
     {
-        for (int x = 0; x < mapa.get_columns(); ++x)
+        for (int x = 0; x < mapa->get_columns(); ++x)
         {
             sf::Sprite sprite;
-            if (mapa.is_water(x, y))
+            if (mapa->is_water(x, y))
                 sprite.setTexture(circle_texture);
-            else if (mapa.is_boat(x, y))
+            else if (mapa->is_boat(x, y))
                 sprite.setTexture(barco_texture);
-            else if (mapa.is_failed(x, y))
+            else if (mapa->is_failed(x, y))
                 sprite.setTexture(fallo_texture);
-            else if (mapa.is_destroyed(x, y))
+            else if (mapa->is_destroyed(x, y))
                 sprite.setTexture(destruido_texture);
             
             sprite.setScale(static_cast<float>(CELL_SIZE_X) / sprite.getTexture()->getSize().x,
@@ -708,26 +794,26 @@ void build_window(sf::RenderWindow& window)
                     {
                         if (player_casillas[i].getGlobalBounds().contains(mouse_pos) && holding) // si clickeo una celda con el barco tomado
                         {
-                            size_t x = (i % mapa.get_columns());
-                            size_t y = (i / mapa.get_columns());
+                            size_t x = (i % mapa->get_columns());
+                            size_t y = (i / mapa->get_columns());
 
-                            std::string tipo = mapa.is_water(x, y) ? "Agua" :
-                                            mapa.is_boat(x, y) ? "Barco" :
-                                            mapa.is_failed(x, y) ? "Disparo fallido" :
+                            std::string tipo = mapa->is_water(x, y) ? "Agua" :
+                                            mapa->is_boat(x, y) ? "Barco" :
+                                            mapa->is_failed(x, y) ? "Disparo fallido" :
                                             "Barco destruido";
                             
                             // Confirmar que cabe en el mapa
                             size_t boat_size = 5 - boat_indx; 
-                            if ((boat_size + x > mapa.get_columns() && horizontal) || (boat_size + y > mapa.get_rows() && !horizontal))
+                            if ((boat_size + x > mapa->get_columns() && horizontal) || (boat_size + y > mapa->get_rows() && !horizontal))
                             {
                                 break;
                             }
 
                             // No poner un barco sobre otro barco
                             bool colision = false;
-                            for (int i = x, j = y; i < mapa.get_columns() && j < mapa.get_rows(); )
+                            for (int i = x, j = y; i < mapa->get_columns() && i < x + boat_size && j < mapa->get_rows() && j < y + boat_size; )
                             {   
-                                if (mapa.is_boat(i, j))
+                                if (mapa->is_boat(i, j))
                                 {
                                     colision = true;
                                     break;
@@ -752,25 +838,25 @@ void build_window(sf::RenderWindow& window)
                         }
                         else if (player_casillas[i].getGlobalBounds().contains(mouse_pos))       // si la clickeo sin ningun bote
                         {
-                            int x = (i % mapa.get_columns());
-                            int y = (i / mapa.get_columns());
+                            int x = (i % mapa->get_columns());
+                            int y = (i / mapa->get_columns());
 
-                            std::string tipo = mapa.is_water(x, y) ? "Agua" :
-                                            mapa.is_boat(x, y) ? "Barco" :
-                                            mapa.is_failed(x, y) ? "Disparo fallido" :
+                            std::string tipo = mapa->is_water(x, y) ? "Agua" :
+                                            mapa->is_boat(x, y) ? "Barco" :
+                                            mapa->is_failed(x, y) ? "Disparo fallido" :
                                             "Barco destruido";
 
                             std::cout << "Mapa - Casilla clickeada [" << x << ", " << y << "] - " << tipo << std::endl;
 
-                            if (mapa.is_boat(x, y))      // si clickeo el barco devolverlo a su posicion
+                            if (mapa->is_boat(x, y))      // si clickeo el barco devolverlo a su posicion
                             {
-                                auto boat = player.get_build().get_fleet().get_boat_of_cell(mapa.get_ptr_cell(x, y));   
+                                auto boat = player.get_build().get_fleet().get_boat_of_cell(mapa->get_ptr_cell(x, y));   
                                 size_t indx = 5 - boat->get_size();             // indice correspondiente al vector de sprite
 
                                 Drawer::draw(player_casillas, mapa, *boat, circle_texture);
                                 for (auto coord : boat->get_boat_coordinates()) // devolvemos a agua todas las casillas
                                 {
-                                    mapa.set_water(mapa.get_ptr_cell(coord.first, coord.second));
+                                    mapa->set_water(mapa->get_ptr_cell(coord.first, coord.second));
                                 }
 
                                 barcos[indx].setRotation(0);                    // ponemos el sprite de nuevo en su posicion
@@ -791,25 +877,25 @@ void build_window(sf::RenderWindow& window)
                         holding = false;
                         horizontal = true;
                     }
-                    else if (exit_button.getGlobalBounds().contains(mouse_pos)) // Clic en "Salir"
+                    else if (exit_button.getGlobalBounds().contains(mouse_pos)) // Click en "Salir"
                     {
                         return;
                     }
-                    else if (play_button.getGlobalBounds().contains(mouse_pos)) // Clic en "Jugar"
+                    else if (play_button.getGlobalBounds().contains(mouse_pos)) // Click en "Jugar"
                     {
                         std::cout << "Jugar. Empezando partida..." << std::endl;
                         Player jugador("Jugador", mapa, radar); 
-                        play_window(window, jugador);
+                        play_window(window, player, bot);
                         return;
                     }
-                    for (size_t i = 0; i < comodines.size(); ++i)   // Clic sobre algun comodin
+                    for (size_t i = 0; i < comodines.size(); ++i)   // Click sobre algun comodin
                     {
                         if (comodines[i].getGlobalBounds().contains(mouse_pos))
                         {
                             std::cout << "Comodin " << i << "\n";
                         }
                     }
-                    for (size_t i = 0; i < barcos.size(); ++i)      // Clic sobre algun barco
+                    for (size_t i = 0; i < barcos.size(); ++i)      // Click sobre algun barco
                     {
                         if (barcos[i].getGlobalBounds().contains(mouse_pos))
                         {                            
@@ -818,7 +904,7 @@ void build_window(sf::RenderWindow& window)
                             holding = !holding;
                         }
                     }
-                    for (size_t i = 0; i < proyectiles.size(); ++i) // Clic sobre algun proyectil
+                    for (size_t i = 0; i < proyectiles.size(); ++i) // Click sobre algun proyectil
                     {
                         if (proyectiles[i].getGlobalBounds().contains(mouse_pos)) 
                         {
@@ -935,7 +1021,7 @@ void menu_window()
             {
                 if (button.getGlobalBounds().contains(mousePos))
                 {
-                        button.setFillColor(sf::Color::White);
+                    button.setFillColor(sf::Color::White);
                 }
                 else
                 {

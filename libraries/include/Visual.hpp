@@ -1,14 +1,78 @@
 #pragma once
-#include "Types.hpp"
-
 // Archivo para desarrollar funcionalidades relacionadas al apartado visual de las estructuras de datos 
 
+#ifndef VISUAL_HPP
+#define VISUAL_HPP
+
+#include <iostream>
+
+#include <SFML/Graphics.hpp>		// Bibliotecas de SFML
+#include <SFML/Audio.hpp>
+
+#include <memory>
+#include <string>
+#include <unordered_map>
+
+// Fowared declaration
+namespace Party
+{
+	class Map_cell;
+	class Water_cell;
+	class Boat_cell;
+	class Failed_cell;
+	class Destroyed_cell;
+	class Protected_cell;
+	class Map;
+
+	using Map_ptr = std::shared_ptr<Map>;
+	using Coordinates = std::pair<size_t, size_t>;	
+	using Map_cell_ptr = std::shared_ptr<Map_cell>;
+	using Boat_cell_ptr = std::shared_ptr<Boat_cell>;
+	using Water_cell_ptr = std::shared_ptr<Water_cell>;
+	using Failed_cell_ptr = std::shared_ptr<Failed_cell>;
+	using Destroyed_cell_ptr = std::shared_ptr<Destroyed_cell>;
+	using Protected_cell_ptr = std::shared_ptr<Protected_cell>;
+}
+namespace Objects 
+{
+	class SingleShot;
+	class ChargedShot;
+	class HealCell;
+	class Item;
+	template <typename DamageType>
+	class Rocket;
+	template <typename EffectType>
+	class Comodin;
+
+	using Item_ptr = std::shared_ptr<Item>;
+}
+namespace Play 
+{
+	struct PairHash;
+	class Boat;
+	class Fleet;
+	class Arsenal;
+	class Build;
+	class Player;
+
+	using Boat_ptr = std::shared_ptr<Boat>;
+}
+namespace BotLogic 
+{
+	class Bot;
+
+	using Movement = std::pair<Party::Coordinates, Objects::Item_ptr>;
+}
 namespace Painter
 {
     class Resources;
     class Drawer;
 }
 
+using namespace Party;
+using namespace Objects;
+using namespace Play;
+using namespace BotLogic;
 using namespace Painter;
 
 /**
@@ -101,6 +165,12 @@ namespace Painter
             Drawer() noexcept;
 
             // Dibuja un bote en el mapa y cambia los sprites de celdas por botes
-            static void draw(std::vector<sf::Sprite>& sprites_cells, Map& mapa, Boat bote, sf::Texture& texture);
+            static void draw(std::vector<sf::Sprite>& sprites_cells, Map_ptr mapa, Boat bote, sf::Texture& texture);
+
+            // Dibuja un sprite segun las casillas de un mapa
+            static void draw(std::vector<sf::Sprite>& sprites_cells, Map_ptr mapa, bool isRadar);
     };
 }
+
+
+#endif // VISUAL_HPP
