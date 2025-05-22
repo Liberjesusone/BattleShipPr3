@@ -974,9 +974,11 @@ namespace BotLogic
 	}
 
 	void Bot::build_target_boat(Coordinates cell)
-	{
+	{	
+		// Construir todas las celdas
+		
 
-
+		// Asignarles cantidades, y luego calcular el porcentaje
 	}
 
 	bool Bot::make_movement(Player_ptr player)
