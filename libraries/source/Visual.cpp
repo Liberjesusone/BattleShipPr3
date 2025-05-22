@@ -131,7 +131,6 @@ namespace Painter
 
     void Drawer::draw(std::vector<sf::Sprite>& sprites_cells, Map_ptr mapa, bool isRadar)
     {
-        // isRadar = false;
         for (int y = 0; y < mapa->get_rows(); ++y)
         {
             for (int x = 0; x < mapa->get_columns(); ++x)
@@ -160,14 +159,9 @@ namespace Painter
                 {
                     sprites_cells[vec_indx].setTexture(Resources::get_texture(Resources::shield_image()));
                 }
-
-
                 sprites_cells[vec_indx].setScale(scale);
                 sprites_cells[vec_indx].setPosition(position);
             }
         }
-
     }
-
-
 }

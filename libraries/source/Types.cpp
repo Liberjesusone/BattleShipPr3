@@ -470,6 +470,7 @@ namespace Objects
 		{
 			std::cout << "destroying cell {" << cell->get_location().first << " " << cell->get_location().second << "}\n";
 			mapa->set_destroy(cell);
+
 		}
 		else if (cell_type == Map_cell::protected_type())
 		{
@@ -579,7 +580,6 @@ namespace Objects
 
 	void Item::use_on(PlayerPair& players, size_t col, size_t row)
 	{
-		// Pude usarce el item casual
 		// OJO por desarrollar
 	}
 
@@ -749,8 +749,6 @@ namespace Play
         	}
     	}
 	}
-
-
 
 	// Clase Arsenal
 

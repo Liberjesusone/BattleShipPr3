@@ -864,6 +864,7 @@ namespace Play
 			Map_ptr mapa;			// Representa el mapa propio del jugador
 			Map_ptr radar;			// Representa el radar donde podra hacer los disparos hacia el mapa enemigo
 			Build build;		// Build con los elementos seleccionados para jugar
+			
 
 		public:
 			// Constructor por defecto

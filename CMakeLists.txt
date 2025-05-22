@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0.1)
+cmake_minimum_required(VERSION 3.16.3)
 project(BattleShipPR3 LANGUAGES CXX)
 
 # Configurar estándar de C++
