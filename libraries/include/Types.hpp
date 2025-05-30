@@ -1,5 +1,3 @@
-#pragma once
-
 #ifndef TYPES_HPP
 #define TYPES_HPP
 
@@ -253,6 +251,8 @@ namespace Party
 
 	/**
 	 * @brief Representa el mapa de una partida, con una matrix de Map_cells y diferentes metodos para operar con ellas
+	 *
+	 * @note In this representation, its easier to iterate it by columns X, and then by rows Y 
 	 */
 	class Map
 	{
@@ -768,6 +768,8 @@ namespace Play
 			size_t get_size() const noexcept;
 
 			std::string get_name() const noexcept;
+
+			bool isHorizontal() const noexcept;
 	};
 
 	/**

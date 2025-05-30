@@ -352,11 +352,6 @@ namespace Party
 
 	void Map::delete_boat(Boat_ptr bote) noexcept
 	{
-		if (collides(bote)) 
-		{
-			return;
-		}
-
 		for (auto coord : bote->get_boat_coordinates())
 		{
 			this->set_water(this->get_ptr_cell(coord.first, coord.second));
@@ -708,6 +703,29 @@ namespace Play
 		return this->name;
 	}
 
+	bool Boat::isHorizontal() const noexcept
+	{
+		if (this->get_size() == 1)
+		{
+			return true;
+		}
+		
+		Coordinates first;
+		Coordinates second;
+		int i = 0;
+		for (auto coord : boat_coordinates)
+		{
+			if (i == 2)
+			{
+				break;
+			}
+			i == 1 ? first = coord : second = coord;
+			++i;
+		}
+		int deltaX = first.first - second.first;	 // Coord difference
+		int deltaY= first.second - second.second;
+		return deltaY == 0;
+	}
 
 	// Clase Fleet
 
@@ -976,8 +994,8 @@ namespace BotLogic
 	void Bot::build_target_boat(Coordinates cell)
 	{	
 		// Construir todas las celdas
-		target_boat = 
-		for ()
+		
+		for (int i = 0; i< 10;++i)
 		{
 
 		}
