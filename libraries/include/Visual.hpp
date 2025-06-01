@@ -108,6 +108,7 @@ namespace painter
             static std::string cannon_png;
             static std::string heart_png;
             static std::string water_player_png;
+            static std::string water_radar_png;
             static std::string water_png;
             static std::string radar_png;
             static std::string wood_table_png;
@@ -115,6 +116,8 @@ namespace painter
             static std::string menu_png;
             static std::string shield_png;
             static std::string explosion_png;
+            static std::string winner_png;
+            static std::string sign_png;
 
             
             // Name of the fonts files .ttf
@@ -164,13 +167,16 @@ namespace painter
             static std::string cannon_image();
             static std::string heart_image();
             static std::string water_player_image();
-            static std::string water_image();
-            static std::string radar_image();
+            static std::string water_radar_image();
+            static std::string water_tile_image();
+            static std::string radar_tile_image();
             static std::string wood_table_image();
             static std::string failed_image();
             static std::string menu_image();
             static std::string shield_image();
             static std::string destroyed_image();
+            static std::string winner_image();
+            static std::string sign_image();
 
             static std::string titulosFont();
 

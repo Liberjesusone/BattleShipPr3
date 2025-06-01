@@ -37,13 +37,16 @@ namespace painter
     std::string Rsrc::cannon_png = "PixelArtCannon.jpeg";
     std::string Rsrc::heart_png = "PixelArtTools.png";
     std::string Rsrc::water_player_png = "PixelArtWaterMap.jpg";
-    std::string Rsrc::water_png = "PixelArtWater.jpg";
-    std::string Rsrc::radar_png = "PixelArtWater.jpg";
+    std::string Rsrc::water_radar_png = "PixelArtWaterRadar.jpg";
+    std::string Rsrc::water_png = "PAWaterTile.jpg";
+    std::string Rsrc::radar_png = "PAWaterRadarTile.jpg";
     std::string Rsrc::wood_table_png = "PixelWoodTable.jpg";
     std::string Rsrc::failed_png = "PixelWater.jpg";
     std::string Rsrc::menu_png = "PixelArtMenu.jpg";
     std::string Rsrc::shield_png = "PixelArtShild.png";
     std::string Rsrc::explosion_png = "PixelArtExplosion.png";
+    std::string Rsrc::winner_png = "PixelArtWinner.png";
+    std::string Rsrc::sign_png = "PixelArtSign.png";
 
     std::string Rsrc::titulos_ttf = "tittle_font.ttf";
 
@@ -137,11 +140,15 @@ namespace painter
     { 
         return Rsrc::water_player_png; 
     }
-    std::string Rsrc::water_image() 
+    std::string Rsrc::water_radar_image()
+    {
+        return Rsrc::water_radar_png; 
+    }
+    std::string Rsrc::water_tile_image() 
     { 
         return Rsrc::water_png; 
     }
-    std::string Rsrc::radar_image() 
+    std::string Rsrc::radar_tile_image() 
     { 
         return Rsrc::radar_png; 
     }
@@ -165,6 +172,14 @@ namespace painter
     {
         return Rsrc::explosion_png;
     }
+    std::string Rsrc::winner_image()
+    {
+        return Rsrc::winner_png;
+    }
+    std::string Rsrc::sign_image()
+    {
+        return Rsrc::sign_png;
+    }
 
     std::string Rsrc::titulosFont()
     {
@@ -179,7 +194,7 @@ namespace painter
         ship_texture = Rsrc::getTexture(Rsrc::boat_r_image());
         failedTexture = Rsrc::getTexture(Rsrc::failed_image());
         destroyed_texture = Rsrc::getTexture(Rsrc::destroyed_image());
-        radar_texture = Rsrc::getTexture(Rsrc::radar_image());
+        radar_texture = Rsrc::getTexture(Rsrc::radar_tile_image());
         wood_table_texture = Rsrc::getTexture(Rsrc::wood_table_image());
         missileTexture = Rsrc::create_special_button(Rsrc::WIN_SIZE.x * 0.05,  Rsrc::WIN_SIZE.y * 0.05, Rsrc::getTexture(Rsrc::cannon_image()));
         comodinTexture = Rsrc::getTexture(Rsrc::heart_image());
@@ -323,38 +338,43 @@ namespace painter
         }
     }
 
-    void Drawer::draw(std::vector<sf::Sprite>& sprites_cells, Map_ptr mapa, bool isRadar)
+    void Drawer::draw(std::vector<sf::Sprite>& spritesCells, Map_ptr mapa, bool isRadar)
     {
+        auto cellSize = spritesCells[0].getGlobalBounds();
+
         for (int y = 0; y < mapa->get_rows(); ++y)
         {
             for (int x = 0; x < mapa->get_columns(); ++x)
             {
-                size_t vec_indx = y * mapa->get_columns() + x;
-                auto position = sprites_cells[vec_indx].getPosition();
-                auto scale = sprites_cells[vec_indx].getScale();
+                size_t vecIndx = y * mapa->get_columns() + x;
+                auto position = spritesCells[vecIndx].getPosition();
+                auto scale = spritesCells[vecIndx].getScale();
+                sf::Sprite sprite;
 
-                if (mapa->is_boat(x, y) && !isRadar)
+                if (mapa->is_water(x, y))
                 {
-                    sprites_cells[vec_indx].setTexture(Rsrc::getTexture(Rsrc::boat_body_image()));
-                }
-                else if (mapa->is_water(x, y))
-                {
-                    sprites_cells[vec_indx].setTexture(Rsrc::getTexture( (isRadar ? Rsrc::radar_image() : Rsrc::water_player_image()) ) );
+                    sprite.setTexture(Rsrc::createCircleTexture(cellSize.width, cellSize.height));
                 }
                 else if (mapa->is_failed(x, y))
                 {
-                    sprites_cells[vec_indx].setTexture(Rsrc::getTexture(Rsrc::failed_image()));
+                    sprite.setTexture(Rsrc::getTexture(Rsrc::failed_image()));
                 }
                 else if (mapa->is_destroyed(x, y))
                 {
-                    sprites_cells[vec_indx].setTexture(Rsrc::getTexture(Rsrc::destroyed_image()));
+                    sprite.setTexture(Rsrc::getTexture(Rsrc::destroyed_image()));
                 }
-                else if (!isRadar)
+                else if (mapa->is_protected(x, y) && !isRadar)
                 {
-                    sprites_cells[vec_indx].setTexture(Rsrc::getTexture(Rsrc::shield_image()));
+                    sprite.setTexture(Rsrc::getTexture(Rsrc::shield_image()));
                 }
-                sprites_cells[vec_indx].setScale(scale);
-                sprites_cells[vec_indx].setPosition(position);
+                else 
+                {
+                    sprite = spritesCells[vecIndx];
+                }
+
+                Drawer::setSize(sprite, sf::Vector2f(cellSize.width, cellSize.height));
+                sprite.setPosition(position);
+                spritesCells[vecIndx] = sprite; 
             }
         }
     }

@@ -768,6 +768,19 @@ namespace Play
     	}
 	}
 
+	bool Fleet::isDestroyed(Map_ptr mapa) noexcept
+	{
+		for (auto boat : this->get_boats())
+		{
+			if (boat->get_distruction_per(mapa) != 100.00f)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+
 	// Clase Arsenal
 
 	Arsenal::Arsenal() noexcept
@@ -847,6 +860,8 @@ namespace BotLogic
 
 	Bot::Bot(std::string name, Map_ptr mapa, Map_ptr radar) noexcept : Player(name, mapa, radar)
 	{
+		this->board = std::make_shared<Map>(radar->get_columns(), radar->get_rows());
+		this->destroyedBoats.resize(5);
 		this->create_map(mapa);	 // Mandamos a crear el mapa
 	}
 
@@ -858,7 +873,7 @@ namespace BotLogic
 	Movement Bot::get_random_move()
 	{                      
 		auto items = this->get_build().get_arsenal().get_items();
-		Item_ptr item = items[get_random_uniform(items.size()-1)];           // Obtenemos un item aleatorio dentro del arsenal 
+		Item_ptr item = items[getRandomUniform(items.size()-1)];           // Obtenemos un item aleatorio dentro del arsenal 
 
 		Map_ptr selected_map;
 		if (item->get_type() == Item::comodin_type())															
@@ -872,7 +887,7 @@ namespace BotLogic
 		
 		Coordinates location{selected_map->get_columns() - 1, selected_map->get_rows() - 1};   // Obtenemos la cantidad de filas y columnas
 																	          // Obtenemos una celda aleatoria dentro del rango del radar
-		Coordinates selected_cell{get_random_uniform(location.first), get_random_uniform(location.second)}; 
+		Coordinates selected_cell{getRandomUniform(location.first), getRandomUniform(location.second)}; 
 		std::cout << "\nobteniendo el moviemiento aleatorio\n";
 		return Movement(selected_cell, item);		
 	}
@@ -886,15 +901,15 @@ namespace BotLogic
 		auto create_random_boat = [rows, columns](Map_ptr mapa, size_t size) -> Boat_ptr
 		{
 			// obtenemos una coordenada aleatoria para la primera celda
-			bool horizontal = get_random_uniform(1);
+			bool horizontal = getRandomUniform(1);
 
 			if (horizontal)		// Segun el size del barco podra ser asigando hacia abajo o derecha desde un segmente reducido del mapa
 			{
-				Coordinates first_cell(get_random_uniform(columns - size), get_random_uniform(rows - 1));
+				Coordinates first_cell(getRandomUniform(columns - size), getRandomUniform(rows - 1));
 
 				while (mapa->is_boat(first_cell.first, first_cell.second))	// Seleccionar una celda que no sea bote
 				{
-					first_cell = std::make_pair(get_random_uniform(columns - size), get_random_uniform(rows - 1));
+					first_cell = std::make_pair(getRandomUniform(columns - size), getRandomUniform(rows - 1));
 				}
 
 				Boat_ptr bote = std::make_shared<Boat>(size, first_cell, horizontal);
@@ -902,11 +917,11 @@ namespace BotLogic
 			}
 			else 
 			{
-				Coordinates first_cell(get_random_uniform(columns - 1), get_random_uniform(rows - size));
+				Coordinates first_cell(getRandomUniform(columns - 1), getRandomUniform(rows - size));
 
 				while (mapa->is_boat(first_cell.first, first_cell.second))	// Seleccionar una celda que no sea bote
 				{
-					first_cell = std::make_pair(get_random_uniform(columns - 1), get_random_uniform(rows - size));
+					first_cell = std::make_pair(getRandomUniform(columns - 1), getRandomUniform(rows - size));
 				}
 
 				Boat_ptr bote = std::make_shared<Boat>(size, first_cell, horizontal);
@@ -985,42 +1000,345 @@ namespace BotLogic
 		auto cell = movement.first;
 		auto item = movement.second;
 
+		this->information = std::string("El bot ha ") + (item->get_type() == 'C' ? "Curado/Protegido" : "Disparado");
 		std::cout << "jugo en la casilla {" << cell.first << " " << cell.second << "} con un " << item->get_type() << "\n";
 		PlayerPair pair = std::make_pair(std::make_shared<Player>(*this), player);
 		item->use_on(pair, cell.first, cell.second);
 		return item->get_type() == Item::comodin_type();	
 	}
 
-	void Bot::build_target_boat(Coordinates cell)
+	void Bot::build_target_boat(Player_ptr player, Coordinates cell)
 	{	
 		// Construir todas las celdas
-		
-		for (int i = 0; i< 10;++i)
-		{
+		targetBoat = std::make_shared<Node<Data>>(Data(cell, 0, false));
 
+		Map_ptr mapa = player->get_map();
+		size_t cols = mapa->get_columns();
+		size_t rows = mapa->get_rows();
+		NodePtr aux = targetBoat;
+
+		int x = cell.first;
+		int y = cell.second;
+
+		std::cout << "x : " << x << "  y : " << y << "\n";
+		for (int i = 1; (y + i) < rows; ++i)
+		{	
+			if (!mapa->is_failed(x, y + i) && !mapa->is_destroyed(x, y + i))	
+			{
+				aux->down = std::make_shared<Node<Data>>(Data(Coordinates(x, y + i), 0, true));   // cremos un nodo abajo
+				aux->down->up = aux;
+				aux = aux->down;							// vamos hacia el 
+				continue;		
+			}
+			break;				
+		}
+		aux = targetBoat;
+		std::cout << "first\n";
+		for (int i = 1; (y - i) >= 0; ++i)
+		{	
+			if (!mapa->is_failed(x, y - i) && !mapa->is_destroyed(x, y - i))	
+			{
+				aux->up = std::make_shared<Node<Data>>(Data(Coordinates(x, y - i), 0, true));   // cremos un nodo arriba
+				aux->up->down = aux;
+				aux = aux->up;							  // vamos hacia el 
+				continue;		
+			}
+			break;				
+		}
+		aux = targetBoat;
+		std::cout << "second\n";
+		for (int i = 1; (x + i) < cols; ++i)
+		{	
+			if (!mapa->is_failed(x + i, y) && !mapa->is_destroyed(x + i, y))	
+			{
+				aux->right = std::make_shared<Node<Data>>(Data(Coordinates(x + i, y), 0, true));   // cremos un nodo a la derecha
+				aux->right->left = aux;
+				aux = aux->right;   					     // vamos hacia el 
+				continue;		
+			}
+			break;				
+		}
+		aux = targetBoat;
+		std::cout << "third\n";
+		for (int i = 1; (x - i) >= 0; ++i)
+		{	
+			if (!mapa->is_failed(x - i, y) && !mapa->is_destroyed(x - i, y))	
+			{
+				aux->left = std::make_shared<Node<Data>>(Data(Coordinates(x - i, y), 0, true));   // cremos un nodo a la izq
+				aux->left->right = aux;
+				aux = aux->left;							// vamos hacia el 
+				continue;		
+			}
+			break;				
+		}
+		std::cout << "fourth\n";
+		
+		size_t alto = targetBoat->get_heigth();
+		size_t ancho = targetBoat->get_width();
+		
+		auto verticalPair = targetBoat->get_short_branch(true);
+		auto horizontalPair = targetBoat->get_short_branch(false);
+		
+		size_t shortAlto = verticalPair.first;			
+		size_t shortAncho = horizontalPair.first;	// Ramas mas cortas de ancho y alto
+
+		std::cout << "ancho " << ancho << "    alto " << alto << "\n";
+		std::cout << "ramarCortaH " << shortAncho << "    ramaCortaV " << shortAlto << "\n";
+
+		// Marcas Cantidades
+		for (auto boat : player->get_build().get_fleet().get_boats())
+		{
+			aux = targetBoat;
+			if (boat->get_distruction_per(player->get_map()) != 100.00f)
+			{
+				size_t boatSize = boat->get_size();
+				size_t deltaX = boatSize - shortAncho;
+				size_t deltaY = boatSize - shortAlto;
+				std::cout << "bote de: " << boatSize <<"\n"; 
+
+				// Horizontal
+				if (boatSize == ancho) // Hay solo una posición
+				{
+					int i = boatSize - 1;
+					while (aux->right != nullptr && i)
+					{
+						aux = aux->right;
+						++std::get<1>(aux->get_ref_key()); // Sumamos uno a cada casilla
+						--i;
+					}
+					i = boatSize - 1;
+					aux = targetBoat;
+					while (aux->left != nullptr && i)
+					{
+						aux = aux->left;
+						++std::get<1>(aux->get_ref_key()); // Sumamos uno a cada casilla
+						--i;
+					}
+				}
+				else if (boatSize < ancho)
+				{
+					// Solo hay una posición para el bote
+					if (shortAncho == 1)
+					{
+						int i = boatSize - 1;
+						while (aux->right != nullptr && i)
+						{
+							aux = aux->right;
+							++std::get<1>(aux->get_ref_key()); // Sumamos uno a cada casilla
+							--i;
+						}
+						i = boatSize - 1;
+						aux = targetBoat;
+						while (aux->left != nullptr && i)
+						{
+							aux = aux->left;
+							++std::get<1>(aux->get_ref_key()); // Sumamos uno a cada casilla
+							--i;
+						}
+					}
+					// Marcado simetrico
+					else if (boatSize <= shortAncho)
+					{
+						int i = 1;
+						while (aux->right != nullptr)
+						{
+							aux = aux->right;
+							if (boatSize - i == 0)
+							{
+								break;
+							}
+							std::get<1>(aux->get_ref_key()) += boatSize - i; // Asignamos valores decrecientes 
+							++i;
+						}
+						aux = targetBoat;
+						i = 1;
+						while (aux->left != nullptr)
+						{
+							aux = aux->left;
+							if (boatSize - i == 0)
+							{
+								break;
+							}
+							std::get<1>(aux->get_ref_key()) += boatSize - i; // Asignamos valores decrecientes 
+							++i;
+						}
+					}
+					// Marcado asimetrico
+					else 				   // boatSize > shortAncho
+					{
+						size_t mayorDelta = deltaX - 1;
+						
+						int i = 1;
+						while (aux->right != nullptr && i < boatSize)
+						{
+							aux = aux->right;
+
+							if (horizontalPair.second) // Si la derecha es la rama menor
+							{
+								std::get<1>(aux->get_ref_key()) += boatSize - i - deltaX; // Valor decreciente menos delta fijo
+							}
+							else 					   // Si la derecha es la rama mayor
+							{
+								std::get<1>(aux->get_ref_key()) += boatSize - i - mayorDelta; // Valor decreciente menos mayorDelta decreciente
+								mayorDelta ? --mayorDelta : 1;     // Decrecemos el mayordelta
+							}
+							++i;
+						}
+						aux = targetBoat;
+						mayorDelta = deltaX - 1;
+						i = 1;
+						while (aux->left != nullptr && i < boatSize)
+						{
+							aux = aux->left;
+
+							if (!horizontalPair.second) // Si la izq es la rama menor
+							{
+								std::get<1>(aux->get_ref_key()) += boatSize - i - deltaX; // Valor decreciente menos delta fijo
+							}
+							else 					   // Si la izq es la rama mayor
+							{
+								std::get<1>(aux->get_ref_key()) += boatSize - i - mayorDelta; // Valor decreciente menos mayorDelta decreciente
+								mayorDelta ? --mayorDelta : 1;     // Decrecemos el mayordelta
+							}
+							++i;
+						}
+					}
+				}
+				aux = targetBoat;
+				
+				// Vertical
+				if (boatSize == alto) // Hay solo una posición
+				{
+					int i = boatSize - 1;
+					while (aux->up != nullptr && i)
+					{
+						aux = aux->up;
+						++std::get<1>(aux->get_ref_key()); // Sumamos uno a cada casilla
+						--i;
+					}
+					i = boatSize - 1;
+					aux = targetBoat;
+					while (aux->down != nullptr && i)
+					{
+						aux = aux->down;
+						++std::get<1>(aux->get_ref_key()); // Sumamos uno a cada casilla
+						--i;
+					}
+				}
+				else if (boatSize < alto)
+				{
+					// Solo hay una posición para el bote
+					if (shortAlto == 1)
+					{
+						int i = boatSize - 1;
+						while (aux->up != nullptr && i)
+						{
+							aux = aux->up;
+							++std::get<1>(aux->get_ref_key()); // Sumamos uno a cada casilla
+							--i;
+						}
+						i = boatSize - 1;
+						aux = targetBoat;
+						while (aux->down != nullptr && i)
+						{
+							aux = aux->down;
+							++std::get<1>(aux->get_ref_key()); // Sumamos uno a cada casilla
+							--i;
+						}
+					}
+					// Marcado simetrico
+					else if (boatSize <= shortAlto)
+					{
+						int i = 1;
+						while (aux->up != nullptr)
+						{
+							aux = aux->up;
+							if (boatSize - i == 0)
+							{
+								break;
+							}
+							std::get<1>(aux->get_ref_key()) += boatSize - i; // Asignamos valores decrecientes 
+							++i;
+						}
+						aux = targetBoat;
+						i = 1;
+						while (aux->down != nullptr)
+						{
+							aux = aux->down;
+							if (boatSize - i == 0)
+							{
+								break;
+							}
+							std::get<1>(aux->get_ref_key()) += boatSize - i; // Asignamos valores decrecientes 
+							++i;
+						}
+					}
+					// Marcado asimetrico
+					else 				   // boatSize > shortAncho
+					{
+						size_t mayorDelta = deltaY - 1;
+						
+						int i = 1;
+						while (aux->up != nullptr && i < boatSize)
+						{
+							aux = aux->up;
+
+							if (verticalPair.second)   // Si arriba es la rama menor
+							{
+								std::get<1>(aux->get_ref_key()) += boatSize - i - deltaY; // Valor decreciente menos delta fijo
+							}
+							else 					   // Si arriba es la rama mayor
+							{
+								std::get<1>(aux->get_ref_key()) += boatSize - i - mayorDelta; // Valor decreciente menos mayorDelta decreciente
+								mayorDelta ? --mayorDelta : 1;     // Decrecemos el mayordelta
+							}
+							++i;
+						}
+						aux = targetBoat;
+						mayorDelta = deltaY - 1;
+						i = 1;
+						while (aux->down != nullptr && i < boatSize)
+						{
+							aux = aux->down;
+
+							if (!verticalPair.second)  // Si abajo es la rama menor
+							{
+								std::get<1>(aux->get_ref_key()) += boatSize - i - deltaY; // Valor decreciente menos delta fijo
+							}
+							else 					   // Si abajo es la rama mayor
+							{
+								std::get<1>(aux->get_ref_key()) += boatSize - i - mayorDelta; // Valor decreciente menos mayorDelta decreciente
+								mayorDelta ? --mayorDelta : 1;     // Decrecemos el mayordelta
+							}
+							++i;
+						}
+					}
+				}
+			}
 		}
 
-		// Asignarles cantidades, y luego calcular el porcentaje
+
+		targetBoat->print();
 	}
 
 	bool Bot::make_movement(Player_ptr player)
 	{	
 		PlayerPair player_pair = std::make_pair(std::make_shared<Player>(*this), player);
 		Map_ptr player_map = player->get_map();
-		Map_ptr bot_map = player->get_radar();
+		Map_ptr botMap = this->get_map();
 
 		Item_ptr missile = this->get_build().get_arsenal().get_items()[0];
 		Item_ptr charged_missile = this->get_build().get_arsenal().get_items()[1];
 		Item_ptr heal = this->get_build().get_arsenal().get_items()[2];
 		Item_ptr shild = this->get_build().get_arsenal().get_items()[3];
 
-		std::vector<Boat_ptr>& bot_boats = this->get_build().get_fleet().get_boats();
+		std::vector<Boat_ptr>& botBoats = this->get_build().get_fleet().get_boats();
 
-		auto get_relative_position = [](Coordinates coord1, Coordinates coord2) -> char 
+		auto getRelativePosition = [](Coordinates coord1, Coordinates coord2) -> char 
 		{
 			if (coord1.first == coord2.first) 
 			{ // Misma Columna
-				return (coord1.second < coord2.second) ? 'U' : 'D';
+				return (coord1.second < coord2.second) ? 'D' : 'U';
 			}
 			else if (coord1.second == coord2.second) 
 			{ // Misma fila
@@ -1032,22 +1350,22 @@ namespace BotLogic
 
 
 
-		auto cal_des_boats = [this, player]() -> size_t
+		auto calDesBoats = [this, player]() -> size_t
 		{
-			size_t destroyed_boats = 0;
+			size_t destroyedBoats = 0;
 			size_t indx = 0;
 			for (auto boat : player->get_build().get_fleet().get_boats())
 			{
 				if (boat->get_distruction_per(player->get_map()) == 100.00f)
 				{
-					this->destroyed_boats[indx] = boat;		// Agregamos el barco a nuestra lista de destruidos
-					++destroyed_boats;
+					this->destroyedBoats[indx] = boat;		// Agregamos el barco a nuestra lista de destruidos
+					++destroyedBoats;
 				}
 				++indx;
 			}
-			return destroyed_boats;
+			return destroyedBoats;
 		};
-		size_t destroyed_boats = cal_des_boats();
+		size_t destroyedBoatsCount = calDesBoats();
 		
 
 		// Una vez se le hayan acabado los heals al enemigo poenemos nuestras celdas acertadas para repasar
@@ -1061,71 +1379,83 @@ namespace BotLogic
 			already_reshoted = true;
 		}
 
-		bool have_to_cure = false; 
-		std::vector<size_t> damaged_boat_indx; 			// Indices de los botes que estan dañados
-		std::vector<size_t> good_boats_indx;
+		bool haveToCure = false; 
+		std::vector<size_t> damagedBoatIndx; 			// Indices de los botes que estan dañados
+		std::vector<size_t> goodBoatsIndx;
 		size_t indx = 0; 
-		for (auto boat : bot_boats)	// Obtenemos la lista de botes que tienen mas del 50% de destruccion y los que tienen menos o igual 50%
+		for (auto boat : botBoats)	// Obtenemos la lista de botes que tienen mas del 50% de destruccion y los que tienen menos o igual 50%
 		{
-			if (boat->get_distruction_per(bot_map) > 0)							
+			if (boat->get_distruction_per(botMap) > 0)							
 			{	
-				damaged_boat_indx.push_back(indx);
+				damagedBoatIndx.push_back(indx);
 			}
-			if (boat->get_distruction_per(bot_map) <= 50.00f)
+			if (boat->get_distruction_per(botMap) <= 50.00f)
 			{
-				good_boats_indx.push_back(indx);
+				goodBoatsIndx.push_back(indx);
 			}
-			if (boat->get_distruction_per(bot_map) > 50.00f)  
+			if (boat->get_distruction_per(botMap) > 50.00f)  
 			{
-				have_to_cure = true;						
+				haveToCure = true;						
 			}
 			++indx;
 		}
 
+		std::cout << "\nEMpezando a buscar el tiro aleatorio\n";
 		// Si uno de nuestros botes supera el 50% de destruccion priorizamos la curacion
-		if (have_to_cure && heal->get_stock() > 0)			// Si no hay heals pasamos al siguiente
-		{
-			if (damaged_boat_indx.size() > 0)			    // Si hay botes destruidos 
+		if (haveToCure && heal->get_stock() > 0)			// Si no hay heals pasamos al siguiente
+		{	
+			// OJO DEBUG
+			std::cout << "ENTRO POR CURAR\n";
+
+			if (damagedBoatIndx.size() > 0)			    // Si hay botes destruidos 
 			{
-				size_t random_indx = get_random_uniform(damaged_boat_indx.size() - 1); 
-				auto boat_coordinates = bot_boats[damaged_boat_indx[random_indx]]->get_boat_coordinates(); // bote aleatorio
+				size_t random_indx = getRandomUniform(damagedBoatIndx.size() - 1); 
+				auto boat_coordinates = botBoats[damagedBoatIndx[random_indx]]->get_boat_coordinates(); // bote aleatorio
 
 				// Buscamos aleatoriamente una celda destruida del bote aleatorio
 				indx = 0;
 				std::vector<std::unordered_set<Coordinates, PairHash>::iterator> damaged_cells;
 				for (auto it = boat_coordinates.begin(); it != boat_coordinates.end(); ++it) 
 				{
-					if (bot_map->is_destroyed(it->first, it->second)) 
+					if (botMap->is_destroyed(it->first, it->second)) 
 					{
 						damaged_cells.push_back(it); 					// Guardamos el iterador 
 					}
 				}
 
-				random_indx = get_random_uniform(damaged_cells.size() - 1);		// Obtenemos un indice para los iteradores, aleatorio
+				random_indx = getRandomUniform(damaged_cells.size() - 1);		// Obtenemos un indice para los iteradores, aleatorio
 				Coordinates random_coordinates = *(damaged_cells[random_indx]); // celda aleatoria
 
-
+				// OJO DEBUG
+				std::cout << "Curara la casilla " << random_coordinates.first << " " << random_coordinates.second << "\n";
+				
 				heal->use_on(player_pair, random_coordinates.first, random_coordinates.second);
+				this->information = "El bot se ha curado"; 
 				return true;			
 			}
 		}
 		
 		// Si no, vemos si tenemos un objetivo en nuestro arbol (target_boat)
-		if (target_boat == nullptr)			// si no hay un target boat
+		if (targetBoat == nullptr)			// si no hay un target boat
 		{
 			bool we_should_shot = true;
 
 			// Si quedan escudos hacemos un 50/50 a ver si disparamos o protegemos
 			if (shild->get_stock() > 0)
 			{
-				bool we_should_shot = get_random_uniform(1);
+				we_should_shot = getRandomUniform(1);
+				std::cout << (we_should_shot ? "we should shot" : "we should protect") << "\n";
 			}
 
 			if (we_should_shot)	// Disparamos espaciadamente
 			{
+				// OJO DEBUG
+				std::cout << "ENTRO POR DISPARAR NORMAL\n";
+
 				auto select_shot_cell = [this]() -> Coordinates
 				{
-					auto player_map = this->get_radar();
+					auto playerMap = this->get_radar();
+
 					// Comprobar si hay que repasar un disparo
 					if (this->cells_to_reshot.size() > 0)
 					{
@@ -1135,13 +1465,14 @@ namespace BotLogic
 					}
 					else // Si no hay que repasar uno, disparar espaciadamente
 					{
+						std::cout << "loking for a random cell\n";
 						// Intentar diez veces buscar un celda agua, que no sea safe_zone
-						Coordinates ran_cell(get_random_uniform(player_map->get_columns() - 1), get_random_uniform(player_map->get_rows() - 1));
-
+						Coordinates ran_cell(getRandomUniform(playerMap->get_columns() - 1), getRandomUniform(playerMap->get_rows() - 1));
+						std::cout << "first rancell " << ran_cell.first << " " << ran_cell.second << " \n";
 						for (int i = 0; i < 10 && !this->board->is_water(ran_cell.first, ran_cell.second); ++i)
 						{
-							ran_cell = std::make_pair(get_random_uniform(player_map->get_columns() - 1), get_random_uniform(player_map->get_rows() - 1));
-
+							ran_cell = std::make_pair(getRandomUniform(playerMap->get_columns() - 1), getRandomUniform(playerMap->get_rows() - 1));
+							std::cout << i << " iterate rancell " << ran_cell.first << " " << ran_cell.second << " \n";
 							if (this->board->is_destroyed(ran_cell.first, ran_cell.second) || this->board->is_failed(ran_cell.first, ran_cell.second))
 							{
 								--i; 	// Solo sumamos un intento si fue tipo Map_cell = safe zone
@@ -1152,11 +1483,17 @@ namespace BotLogic
 							return ran_cell;
 						}
 
+						std::cout << "ran cell encontrada\n";
 						// Si no se encontro ninguna celda water, disparar en una safe Zone
-						for (int i = 0; i < 10 && !this->board->is_water(ran_cell.first, ran_cell.second) && 
-												  !this->board->is_main(ran_cell.first, ran_cell.second); ++i)
+						while (true)
 						{
-							ran_cell = std::make_pair(get_random_uniform(player_map->get_columns() - 1), get_random_uniform(player_map->get_rows() - 1));
+							if (this->get_radar()->is_failed(ran_cell.first, ran_cell.second) ||
+								this->get_radar()->is_destroyed(ran_cell.first, ran_cell.second))
+							{
+								ran_cell = std::make_pair(getRandomUniform(playerMap->get_columns() - 1), getRandomUniform(playerMap->get_rows() - 1));
+								continue;
+							}
+							break;
 						}
 
 						// Se supone que en este punto, la celda ran_cell, sera siempre o agua o safe zone
@@ -1165,6 +1502,9 @@ namespace BotLogic
 				};
 
 				Coordinates cell_to_shot = select_shot_cell();
+				
+				// OJO DEBUG
+				std::cout << "Disparara normal la casilla " << cell_to_shot.first << " " << cell_to_shot.second << "\n";
 				
 				missile->use_on(player_pair, cell_to_shot.first, cell_to_shot.second);
 				
@@ -1180,14 +1520,34 @@ namespace BotLogic
 					// a la lista de barcos y mandar a construir el targetboat
 					board->set_destroy(board->get_ptr_cell(cell_to_shot.first, cell_to_shot.second));
 					successful_shots.push_back(cell_to_shot);
-					build_target_boat(cell_to_shot);	
-					
-					size_t new_des_boats = cal_des_boats();
-					if (new_des_boats > destroyed_boats)	// Si antes del disparo teniamos menos barcos destruidos significa que destruimos un con el disparo
+
+					// OJO DEBUG
+					std::cout << "Creando el arbol\n";
+					build_target_boat(player, cell_to_shot);	
+					std::cout << "Creado\n";
+
+					if (player->get_build().get_fleet().get_boat_of_cell(player->get_map()->get_ptr_cell(cell_to_shot.first, cell_to_shot.second))->get_size() == 1)
 					{
-						target_boat = nullptr;		// Entonces eliminamos el arbol de posibilidades
+						targetBoat = nullptr;
 					}
-					
+					if (successful_shots.size())
+					{
+						for (int i = 0; i < successful_shots.size() - 1; ++i)
+						{
+							if (cell_to_shot == successful_shots[i])	
+							{
+								targetBoat = nullptr;
+							}
+						}
+					}
+
+					std::cout << "calculando el destroyed boats\n";
+					size_t newDesBoats = calDesBoats();
+					std::cout << "before boats: " << destroyedBoatsCount  << " after boats " << newDesBoats <<  "\n";
+					if (newDesBoats > destroyedBoatsCount)	// Si antes del disparo teniamos menos barcos destruidos significa que destruimos un con el disparo
+					{
+						targetBoat = nullptr;		// Entonces eliminamos el arbol de posibilidades
+					}
 				}
 				else if (player_map->is_boat(cell_to_shot.first, cell_to_shot.second))			 // Disparo a un escudo
 				{
@@ -1195,38 +1555,60 @@ namespace BotLogic
 					board->set_boat(board->get_ptr_cell(cell_to_shot.first, cell_to_shot.second));
 					cells_to_reshot.push(cell_to_shot);
 				}
+
+				this->information = "El bot ha disparado";
 				return false;
 			}
 			else 				// Protegemos una de nuestras casillas 
 			{	
-				size_t random_indx = get_random_uniform(good_boats_indx.size() - 1); 
-				auto boat_coordinates = bot_boats[good_boats_indx[random_indx]]->get_boat_coordinates(); // bote aleatorio con menos del 50%
+				// OJO DEBUG
+				std::cout << "ENTRO POR PROTEGER\n";
+
+				size_t randomIndx = getRandomUniform(botBoats.size() - 1);
+				while (botBoats[randomIndx]->get_distruction_per(botMap) == 100.00f) // buscamos inicialemente uno aleatorio que no este destruido
+				{
+					randomIndx = getRandomUniform(botBoats.size() - 1);
+				}
+
+				if (goodBoatsIndx.size() > 0)		// Pero si hay botes buenos elejimos preferiblemente uno de ellos
+				{
+					randomIndx = getRandomUniform(goodBoatsIndx.size() - 1); 
+					randomIndx = goodBoatsIndx[randomIndx];
+				}
+				std::cout << "bote aleatorio encontrado \n";
+				auto boat_coordinates = botBoats[randomIndx]->get_boat_coordinates(); // bote aleatorio con menos del 50%
 
 				// Buscamos aleatoriamente una celda buena del bote aleatorio
 				indx = 0;
-				std::vector<std::unordered_set<Coordinates, PairHash>::iterator> boat_cells;
+				std::vector<std::unordered_set<Coordinates, PairHash>::iterator> boatCells;
 				for (auto it = boat_coordinates.begin(); it != boat_coordinates.end(); ++it) 
 				{
-					if (bot_map->is_boat(it->first, it->second)) 
+					if (botMap->is_boat(it->first, it->second)) 
 					{
-						boat_cells.push_back(it); 					// Guardamos el iterador 
+						boatCells.push_back(it); 					// Guardamos el iterador 
 					}
 				}
 
-				random_indx = get_random_uniform(boat_cells.size() - 1);     // Obtenemos un indice para los iteradores, aleatorio
-				Coordinates random_coordinates = *(boat_cells[random_indx]); // celda aleatoria
+				randomIndx = getRandomUniform(boatCells.size() - 1);     // Obtenemos un indice para los iteradores, aleatorio
+				Coordinates random_coordinates = *(boatCells[randomIndx]); // celda aleatoria
 
+				
+					// OJO DEBUG
+				std::cout << "Protegiendo la casilla " << random_coordinates.first << " " << random_coordinates.second << "\n";
 				shild->use_on(player_pair, random_coordinates.first, random_coordinates.second);
+				this->information = "El bot se ha protegido";
 				return true;
 			}
 		}
 		else					// Si hay un target boat, seguimos disparando en funcion de el 
 		{
-			Node_ptr selected_node = target_boat->get_highest_key();
-			Data& clave = selected_node->get_ref_key();
+			std::cout << "ENTRO POR ATACAR EL TARGET BOAT\n";
+			NodePtr selectedNode = targetBoat->get_highest_key();
+			Data clave = selectedNode->get_key();
+			std::cout << "geting clave\n";
 			auto coord = std::get<0>(clave);
 			auto percent = std::get<1>(clave);
-
+			std::cout << "obtuvo la hieest key\n";
 			bool use_normal_missile = true;
 
 			// Seleccionar entre misil normal o super misil
@@ -1236,9 +1618,11 @@ namespace BotLogic
 			}
 			else if (charged_missile->get_stock() > 0 && percent > 75.00f)
 			{
-				use_normal_missile = get_random_uniform(1);
+				use_normal_missile = getRandomUniform(1);
 			}
 
+				// OJO DEBUG
+			std::cout << "disparando la casilla " << (use_normal_missile ? "con misil normal " : "con super ") << coord.first << " " << coord.second << "\n";
 			use_normal_missile ? missile->use_on(player_pair, coord.first, coord.second) : charged_missile->use_on(player_pair, coord.first, coord.second);
 
 			if (player_map->is_failed(coord.first, coord.second))				// fallamos
@@ -1246,39 +1630,47 @@ namespace BotLogic
 				board->set_fail(board->get_ptr_cell(coord.first, coord.second));
 				board->create_safe_zone(coord);
 
+				std::cout << "fallo ";
 				// Cortar esta rama del arbol 
-				auto initial_coord = std::get<0>(target_boat->get_ref_key());
-				char relative_pos = get_relative_position(initial_coord, coord);
+				auto initial_coord = std::get<0>(targetBoat->get_ref_key());
+				char relativePos = getRelativePosition(initial_coord, coord);
 				
-				if (relative_pos == 'R')	    // Esta a la derecha
+				if (relativePos == 'R')	    // Esta a la derecha
 				{
-					selected_node->left->right = nullptr;
+					std::cout << "cortando a la derecha\n";
+					selectedNode->left->right = nullptr;
 				}
-				else if (relative_pos == 'L')	// Esta a la izq
+				else if (relativePos == 'L')	// Esta a la izq
 				{
-					selected_node->right->left = nullptr;
+					std::cout << "cortando a la izq\n";
+					selectedNode->right->left = nullptr;
 				}
-				else if (relative_pos == 'D')	// Esta abajo
+				else if (relativePos == 'D')	// Esta abajo
 				{
-					selected_node->up->down = nullptr;
+					std::cout << "cortando abajo\n";
+					std::cout << (selectedNode->up == nullptr ? "es nulo" : "no es nulo") << "\n";
+					selectedNode->up->down = nullptr;
 				}
-				else if (relative_pos == 'U')	// Esta arriba
+				else if (relativePos == 'U')	// Esta arriba
 				{
-					selected_node->down->up = nullptr;
+					std::cout << "cortando arriba\n";
+					selectedNode->down->up = nullptr;
 				}
 			}
 			else if (player_map->is_destroyed(coord.first, coord.second))      // Acerto
 			{
 				// Marcar nuestra board como destruida, y agregar el tiro a successful shots, agregar barcos si se destruyeron 
 				// a la lista de barcos y mandar a construir el targetboat
-				std::get<2>(clave) = false;
 				board->set_destroy(board->get_ptr_cell(coord.first, coord.second));
 				successful_shots.push_back(coord);	
 				
-				size_t new_des_boats = cal_des_boats();
-				if (new_des_boats > destroyed_boats)	// Si antes del disparo teniamos menos barcos destruidos significa que destruimos un con el disparo
+				std::cout << "calculando el destroyed boats\n";
+				size_t newDesBoats = calDesBoats();
+				std::cout << "before boats: " << destroyedBoatsCount  << " after boats " << newDesBoats <<  "\n";
+				if (newDesBoats > destroyedBoatsCount)	// Si antes del disparo teniamos menos barcos destruidos significa que destruimos un con el disparo
 				{
-					target_boat = nullptr;		// Entonces eliminamos el arbol de posibilidades
+					std::cout << "destruyendo el targetBoat\n";
+					targetBoat = nullptr;		// Entonces eliminamos el arbol de posibilidades
 				}
 			}
 			else if (player_map->is_boat(coord.first, coord.second))			 // Disparo a un escudo
@@ -1286,8 +1678,16 @@ namespace BotLogic
 				// Marcar nuestra board como bote, y agregar el tiro a cells-to-reshot
 				board->set_boat(board->get_ptr_cell(coord.first, coord.second));
 				cells_to_reshot.push(coord);
+				targetBoat = nullptr;
 			}
+
+			this->information = "El bot ha disparado";
 			return false;
 		}
+	}
+
+	std::string Bot::getInformation()
+	{
+		return information;
 	}
 }

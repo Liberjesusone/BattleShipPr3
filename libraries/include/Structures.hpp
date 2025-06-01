@@ -19,55 +19,169 @@ namespace Tree
 	template <typename T>
 	class Node
 	{
-        using Node_ptr = std::shared_ptr<Node<T>>;	
+        using TreePtr = std::shared_ptr<Node<T>>;	
 
         public: 
             T data;
-            Node_ptr up{nullptr};
-            Node_ptr down{nullptr};
-            Node_ptr right{nullptr};
-            Node_ptr left{nullptr};
+            TreePtr up{nullptr};
+            TreePtr down{nullptr};
+            TreePtr right{nullptr};
+            TreePtr left{nullptr};
 
             //Constructor por defecto
-            Node() : left(nullptr), right(nullptr), down(nullptr) {}
+            Node() : left(nullptr), right(nullptr), down(nullptr) 
+			{
+				// Empty
+			}
 
             //Constructor con valor tipo Hoja
-            Node(T data) : data(data), up(nullptr), left(nullptr), right(nullptr), down(nullptr) {} 
+            Node(T data) : data(data), up(nullptr), left(nullptr), right(nullptr), down(nullptr) 
+			{
+				// Empty
+			} 
 
             // Obtiene la clave 
             T get_key() { return this->data; }
             T& get_ref_key() { return this->data; }
 
-			Node_ptr get_highest_key()
+			TreePtr get_highest_key()
 			{
-				Node_ptr best_node = std::make_shared<Node>(*this); // Nodo con el valor más alto
-				size_t max_probability = std::get<1>(this->data);   // Mayor número de veces que un barco puede pasar
+				TreePtr bestNode = std::make_shared<Node>(*this); // Nodo con el valor más alto
+				float maxProbability = std::get<1>(this->data);   // Mayor número de veces que un barco puede pasar
 
-				std::stack<Node_ptr> stack;
-				stack.push(std::make_shared<Node>(*this));	
-				// Revisamos todos los hijos del nodo actual
-				while (!stack.empty())
+				float den = 0;
+				TreePtr aux = std::make_shared<Node>(*this);
+				while (aux->up != nullptr)
 				{
-					Node_ptr node = stack.top();
-					stack.pop();
-					for (const auto& child : node->childrens()) 
+					aux = aux->up;
+					if (std::get<2>(aux->get_key()))		// vemos si no ha sido usado antes
 					{
-						if (child != nullptr && std::get<1>(child->data) > max_probability && std::get<2>(child->data)) // Ajustamos el max
+						if (std::get<1>(aux->get_key()) > maxProbability) // actualizar max
 						{
-							max_probability = std::get<1>(child->data);
-							best_node = child;
+							std::cout << "coord : " << std::get<0>(aux->get_key()).first << " " << std::get<0>(aux->get_key()).second << " \n";
+							std::cout << "aux value: " << std::get<1>(aux->get_key()) << "  max: " << maxProbability << "\n"; 
+							bestNode = aux;
+							maxProbability = std::get<1>(aux->get_key());
 						}
-						stack.push(child);	// Sumamos a su hijo para que en el llamado recursivo se vean tmb sus hijos
-					}	
+						den += std::get<1>(aux->get_key());
+						break;
+					}
 				}
+				aux = std::make_shared<Node>(*this);
+				while (aux->right != nullptr)
+				{
+					aux = aux->right;
+					if (std::get<2>(aux->get_key()))
+					{
+						if (std::get<1>(aux->get_key()) > maxProbability) // actualizar max
+						{
+							std::cout << "coord : " << std::get<0>(aux->get_key()).first << " " << std::get<0>(aux->get_key()).second << " \n";
+							std::cout << "aux value: " << std::get<1>(aux->get_key()) << "  max: " << maxProbability << "\n"; 
+							bestNode = aux;
+							maxProbability = std::get<1>(aux->get_key());
+						}
+						den += std::get<1>(aux->get_key());
+						break;
+					}
+				}
+				aux = std::make_shared<Node>(*this);
+				while (aux->left != nullptr)
+				{
+					aux = aux->left;
+					if (std::get<2>(aux->get_key()))
+					{
+						if (std::get<1>(aux->get_key()) > maxProbability) // actualizar max
+						{
+							std::cout << "coord : " << std::get<0>(aux->get_key()).first << " " << std::get<0>(aux->get_key()).second << " \n";
+							std::cout << "aux value: " << std::get<1>(aux->get_key()) << "  max: " << maxProbability << "\n"; 
+							bestNode = aux;
+							maxProbability = std::get<1>(aux->get_key());
+						}
+						den += std::get<1>(aux->get_key());
+						break;
+					}
+				}
+				aux = std::make_shared<Node>(*this);
+				while (aux->down != nullptr)
+				{
+					aux = aux->down;
+					if (std::get<2>(aux->get_key()))
+					{
+						if (std::get<1>(aux->get_key()) > maxProbability) // actualizar max
+						{
+							std::cout << "coord : " << std::get<0>(aux->get_key()).first << " " << std::get<0>(aux->get_key()).second << " \n";
+							std::cout << "aux value: " << std::get<1>(aux->get_key()) << "  max: " << maxProbability << "\n"; 
+							bestNode = aux;
+							maxProbability = std::get<1>(aux->get_key());
+						}
+						den += std::get<1>(aux->get_key());
+						break;
+					}
+				}
+				std::cout << "Besto node finded max: " << std::get<1>(bestNode->get_key()) << "   coord : " << std::get<0>(bestNode->get_key()).first << " " << std::get<0>(bestNode->get_key()).second << " \n";
+				
+				std::get<1>(bestNode->get_ref_key()) = maxProbability / den;
+				std::cout << "probability " << (std::get<1>(bestNode->get_key())) << "\n";
+				std::get<2>(bestNode->get_ref_key()) = false;
+				return bestNode;
+			}
 
-				return best_node;
+			void print()
+			{
+				std::string upStr;
+				std::string rightStr;
+				std::string downStr;
+				std::string leftStr;
+			
+				TreePtr best_node = std::make_shared<Node>(*this); // Nodo con el valor más alto
+				float max_probability = std::get<1>(this->data);   // Mayor número de veces que un barco puede pasar
+
+				TreePtr aux = std::make_shared<Node>(*this);
+				while (aux->up != nullptr)
+				{
+					aux = aux->up;
+					std::string coordinates = std::string("[") + std::to_string(std::get<0>(aux->get_key()).first) + std::string("-") + std::to_string(std::get<0>(aux->get_key()).second) + std::string("] ");
+					std::string number = std::to_string(std::get<1>(aux->get_key())) + std::string(" ");
+					std::string boolean = (std::get<2>(aux->get_key()) ? std::string("true") : std::string("false")) + std::string(" ");
+					upStr += coordinates + number + boolean + std::string("; "); 
+				}
+				aux = std::make_shared<Node>(*this);
+				while (aux->right != nullptr)
+				{
+					aux = aux->right;
+					std::string coordinates = std::string("[") + std::to_string(std::get<0>(aux->get_key()).first) + std::string("-") + std::to_string(std::get<0>(aux->get_key()).second) + std::string("] ");
+					std::string number = std::to_string(std::get<1>(aux->get_key())) + std::string(" ");
+					std::string boolean = (std::get<2>(aux->get_key()) ? std::string("true") : std::string("false")) + std::string(" ");
+					rightStr += coordinates + number + boolean + std::string("; ");  
+				}
+				aux = std::make_shared<Node>(*this);
+				while (aux->left != nullptr)
+				{
+					aux = aux->left;
+					std::string coordinates = std::string("[") + std::to_string(std::get<0>(aux->get_key()).first) + std::string("-") + std::to_string(std::get<0>(aux->get_key()).second) + std::string("] ");
+					std::string number = std::to_string(std::get<1>(aux->get_key())) + std::string(" ");
+					std::string boolean = (std::get<2>(aux->get_key()) ? std::string("true") : std::string("false")) + std::string(" ");
+					leftStr += coordinates + number + boolean + std::string("; "); 
+				}
+				aux = std::make_shared<Node>(*this);
+				while (aux->down != nullptr)
+				{
+					aux = aux->down;
+					std::string coordinates = std::string("[") + std::to_string(std::get<0>(aux->get_key()).first) + std::string("-") + std::to_string(std::get<0>(aux->get_key()).second) + std::string("] ");
+					std::string number = std::to_string(std::get<1>(aux->get_key())) + std::string(" ");
+					std::string boolean = (std::get<2>(aux->get_key()) ? std::string("true") : std::string("false")) + std::string(" ");
+					downStr += coordinates + number + boolean + std::string("; "); 
+				}		
+				std::cout << "UpBranch: " << upStr << "\n";		
+				std::cout << "rightBranch: " << rightStr << "\n";		
+				std::cout << "downBranch: " << downStr << "\n";		
+				std::cout << "leftBranch: " << leftStr << "\n";		
 			}
 
             //Retorna una lista con los hijos asi apunten a nullptr, en el orden up, down, right, left
-            std::list<Node_ptr> childrens() 
+            std::list<TreePtr> childrens() 
             {
-                std::list<Node_ptr> children_list;
+                std::list<TreePtr> children_list;
                 children_list.push_back(up);
                 children_list.push_back(down);
                 children_list.push_back(right);
@@ -75,11 +189,70 @@ namespace Tree
                 return children_list;
             }
 
-            // Inserta un nuevo nodo en el arbol
-            void insert(T dato) 
-            {
-                // OJO POR DESARROLLAR
-            }
+			size_t get_heigth()
+			{
+				size_t heigth = 1;
+				TreePtr aux = std::make_shared<Node>(*this);
+				while (aux->up != nullptr)
+				{
+					aux = aux->up;
+					++heigth;
+				}
+				aux = std::make_shared<Node>(*this);
+				while (aux->down != nullptr)
+				{
+					aux = aux->down;
+					++heigth;
+				}
+
+				return heigth;
+			}
+			
+			/**
+			 * @brief devuelven el tamaño de la rama mas corta, y un bool para saber que rama es 
+			 * 
+			 * @param vertical especifica en que sentido se quiere analizar las ramas, vertical o horizontal(vertical = false)
+			 * 
+			 * @return devuelve el tamaño, y true si es arriba o derecha, y false si es abajo o izq, respecto a la dirección vertical/horizontal
+			 */
+			std::pair<size_t, bool> get_short_branch(bool vertical)
+			{
+				size_t size = 1;
+				size_t size2 = 1;
+				TreePtr aux = std::make_shared<Node>(*this);
+				while ((vertical ? aux->up != nullptr : aux->right != nullptr))
+				{
+					aux = (vertical ? aux->up : aux->right);
+					++size;
+				}
+				aux = std::make_shared<Node>(*this);
+				while ((vertical ? aux->down != nullptr : aux->left != nullptr))
+				{
+					aux = (vertical ? aux->down : aux->left);
+					++size2;
+				}
+
+				return std::make_pair((size > size2 ? size2 : size), size < size2);
+			}
+
+			size_t get_width()
+			{
+				size_t width = 1;
+				TreePtr aux = std::make_shared<Node>(*this);
+				while (aux->right != nullptr)
+				{
+					aux = aux->right;
+					++width;
+				}
+				aux = std::make_shared<Node>(*this);
+				while (aux->left != nullptr)
+				{
+					aux = aux->left;
+					++width;
+				}
+
+				return width;
+			}
 	};
 
 	/**
@@ -329,7 +502,7 @@ namespace Tree
 	/**
 	 * @brief Genera un numero aleatorio entre [0, n]
 	 */
-	int get_random_uniform(int n);
+	int getRandomUniform(int n);
 }
 
 

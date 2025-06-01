@@ -50,7 +50,7 @@ namespace Tree
 	template <typename Tree, typename Action>
 	void level_traverse(Tree* root, Action&& action);
 
-	int get_random_uniform(int n);
+	int getRandomUniform(int n);
 }
 namespace Party
 {
@@ -812,6 +812,13 @@ namespace Play
 			 * @param bote a eliminar
 			 */
 			void delete_boat(Boat_ptr bote);
+
+			/**
+			 * @brief Confirma si toda la flota ha sido destruida
+			 * 
+			 * @return true si ha sido destruida en su totalidad, false si quedan celdas vivas
+			 */
+			bool isDestroyed(Map_ptr mapa) noexcept;
 	};
 
     /**
@@ -898,19 +905,19 @@ namespace BotLogic
 	{
 		// Cada nodo cuanta con una coordenada que es la que representa en el mapa, y la cantidad de veces que los barcos pueden
 		// Pasar por sobre ella, segun las probabilidades del bot, y un bool que sera true, si esta disponible, y false, si ya la disparamos
-		using Data = std::tuple<Coordinates, size_t, bool>;
-		using Node_ptr = std::shared_ptr<Node<Data>>;
+		using Data = std::tuple<Coordinates, float, bool>;
+		using NodePtr = std::shared_ptr<Node<Data>>;
 		private:
 			// Arbol que representa las posiciones de los posibles barcos segun el disparo acertado
-			Node_ptr target_boat;
+			NodePtr targetBoat;
 
-			std::vector<Boat_ptr> destroyed_boats;				// Lista propia de los barcos que lleva destruidos
-			Map_ptr board = std::make_shared<Map>(5, 10);	    // Matriz donde se dispara espaciadamente y se marca una safezone
+			std::vector<Boat_ptr> destroyedBoats;				// Lista propia de los barcos que lleva destruidos
+			Map_ptr board;	                                    // Matriz donde se dispara espaciadamente y se marca una safezone
 
 			std::vector<Coordinates> successful_shots;			// vector con las celdas que ha acertado el bot
 			std::stack<Coordinates> cells_to_reshot;		        // pila con las celdas que el bot deberia volver a disparar, ejem: shilds
 			
-
+			std::string information{""};
 		public:
 			// Constructor por defecto
 			Bot() noexcept;
@@ -951,12 +958,14 @@ namespace BotLogic
 			 * 
 			 * @param coord de la celda donde se disparo y acerto, para empezara a crear desde alli el target boat
 			 */
-			void build_target_boat(Coordinates coord);
+			void build_target_boat(Player_ptr player, Coordinates coord);
 
 			/**
 			 * @brief Creates a complete movement evaluating with the bot logic how should he move
 			 */
 			bool make_movement(Player_ptr player);
+
+			std::string getInformation();
 	};
 }
 

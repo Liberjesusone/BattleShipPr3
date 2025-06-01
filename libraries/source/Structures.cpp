@@ -12,7 +12,7 @@ std::string num_to_str(int numero)
 
 namespace Tree
 {
-	int get_random_uniform(int n)
+	int getRandomUniform(int n)
 	{
 		// Crear un generador de n�meros aleatorios
 		static std::random_device rd;                 // Semilla aleatoria del hardware
